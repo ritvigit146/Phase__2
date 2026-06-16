@@ -151,10 +151,45 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
-
-
+//transaction cost
+//43718 gas
+//execution cost
+//22514 gas
 /*
+Audit Report
+Title: Missing Access Control in storeNumber()
 
+Severity: Medium because unauthorized users can modify protocol state
+
+Location: Contract:StoreUintVul
+Function: storeNumber()
+
+Vulnerability Description: The storeNumber() function allows any external user to modify
+the number state variable because no access control mechanism is implemented.
+
+Impact:An attacker can overwrite the stored value with arbitrary data
+
+If this variable controlled critical protocol logic such as:
+- pricing
+- treasury configuration
+- protocol parameters
+
+then unauthorized users could manipulate system behavior.
+
+Proof of Concept:
+                1. Deploy contract
+                2. User A calls:
+                    storeNumber(100)
+                3. Attacker calls:
+                    storeNumber(999999)
+                4. Contract state changes successfully
+
+Root Cause: The function is declared public without any authorization checks.
+            No require() statement validates the caller identity.
+
+Recommendation: Restrict access using an owner check.
+                Example:
+                require(msg.sender == owner, "Not owner");
 
 */
 
