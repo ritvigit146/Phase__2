@@ -76,7 +76,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"extensions.sol": "StoreUint"
+			"prac1.sol": "StoreUint"
 		},
 		"evmVersion": "osaka",
 		"libraries": {},
@@ -90,7 +90,7 @@
 		"remappings": []
 	},
 	"sources": {
-		"extensions.sol": {
+		"prac1.sol": {
 			"keccak256": "0xeb78beee659f305d1e207a8209b5f72478c0529c0461b132ddaa4d38ddb0ea8e",
 			"license": "MIT",
 			"urls": [
