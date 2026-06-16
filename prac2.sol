@@ -43,12 +43,22 @@ Auditors check:
 =========================================================
 */
 
-contract StateOverwriteVul {
+contract StateOverwriteVul{
 
     uint256 public number;
+    address public owner;
+
+    constructor() {
+        owner = msg.sender;
+    }
 
     function updateNumber(uint256 _newNumber) public {
+        require(msg.sender == owner, "Only owner can update");
         number = _newNumber;
+    }
+
+    function getNumber() public view returns (uint256) {
+        return number;
     }
 }
 
@@ -353,3 +363,4 @@ contract StateOverwrite {
         return previousNumber;
     }
 }
+
