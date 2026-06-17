@@ -67,23 +67,63 @@ Auditors inspect:
 
 =========================================================
 */
+contract StatePersistenceVul {
 
-contract StatePersistence {
+    address public owner;
 
     uint256 public counter;
+    uint256 public previousCounter;
 
-    function increment() public {
+    event CounterUpdated(
+        uint256 oldValue,
+        uint256 newValue
+    );
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    modifier onlyOwner() {
+        require(
+            msg.sender == owner,
+            "Only owner can modify counter"
+        );
+        _;
+    }
+
+    function increment()
+        public
+        onlyOwner
+    {
+        previousCounter = counter;
 
         counter = counter + 1;
+
+        emit CounterUpdated(
+            previousCounter,
+            counter
+        );
     }
 
-    function setCounter(uint256 _value) public {
+    function setCounter(uint256 _value)
+        public
+        onlyOwner
+    {
+        previousCounter = counter;
 
         counter = _value;
+
+        emit CounterUpdated(
+            previousCounter,
+            counter
+        );
     }
 
-    function getCounter() public view returns (uint256) {
-
+    function getCounter()
+        public
+        view
+        returns (uint256)
+    {
         return counter;
     }
 }
@@ -384,3 +424,126 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+/*
+Audit Report
+
+Title: Loss of Previous State Due to Overwrite
+
+Severity: Low
+
+Status: Fixed
+
+Location:
+Contract: StatePersistence
+Functions: increment(), setCounter()
+
+Vulnerability Description:
+
+In the vulnerable version, the counter state variable was
+updated directly whenever increment() or setCounter()
+was called.
+
+As a result, the previous value was permanently lost and
+could not be retrieved from contract storage.
+
+This reduced auditability and made it difficult to track
+historical state transitions.
+
+Impact:
+
+Loss of previous state values could:
+
+* Reduce transparency
+* Make debugging difficult
+* Limit auditability
+* Prevent recovery of historical information
+
+If the variable represented critical protocol data,
+important state history could be lost.
+
+Proof of Concept:
+
+Vulnerable Version:
+
+1. Deploy contract
+
+2. Call:
+   setCounter(10)
+
+   State:
+   counter = 10
+
+3. Call:
+   setCounter(50)
+
+   State:
+   counter = 50
+
+4. Observe:
+   Previous value (10) is no longer stored.
+
+Root Cause:
+
+The previous implementation directly overwrote storage:
+
+counter = _value;
+
+without preserving the existing value.
+
+Remediation:
+
+The contract now stores the previous value before every
+state update:
+
+previousCounter = counter;
+
+counter = _value;
+
+Additionally, an event is emitted:
+
+emit CounterUpdated(previousCounter, counter);
+
+This provides:
+
+* State history preservation
+* Better auditability
+* Easier debugging
+* On-chain tracking of state transitions
+*/
+//Patched Code
+contract StatePersistence {
+
+    uint256 public counter;
+    uint256 public previousCounter;
+
+    // Event to track state changes
+    event CounterUpdated(
+        uint256 oldValue,
+        uint256 newValue
+    );
+
+    function increment() public {
+
+        // Save old value before update
+        previousCounter = counter;
+
+        counter = counter + 1;
+
+        emit CounterUpdated(previousCounter, counter);
+    }
+
+    function setCounter(uint256 _value) public {
+
+        // Save old value before update
+        previousCounter = counter;
+
+        counter = _value;
+
+        emit CounterUpdated(previousCounter, counter);
+    }
+
+    function getCounter() public view returns (uint256) {
+
+        return counter;
+    }
+}
