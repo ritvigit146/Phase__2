@@ -400,6 +400,107 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+/*
+Audit Report
+
+Title: Incorrect Array Length Validation in addMultipleValues()
+
+Severity: Medium because the intended maximum array length of 10 can be exceeded, leading to unexpected storage
+ growth and violation of business logic.
+
+Location:
+Contract: DynamicArrayGrowth
+Function: addMultipleValues()
+
+Vulnerability Description:
+The addMultipleValues() function checks:
+
+require(numbers.length < 10, "Array limit reached");
+
+However, the function pushes three values in a single transaction.
+
+As a result, if the array length is already close to 10, the check passes but the final array size can exceed the
+ intended limit.
+
+Impact:
+A user can:
+
+* exceed the maximum array length
+* bypass the intended storage restriction
+* increase storage usage beyond design expectations
+* create inconsistent contract behavior
+
+If the array were later used for:
+
+* participant tracking
+* voting systems
+* staking records
+* reward distributions
+
+then exceeding the intended limit could cause logic errors or unexpected outcomes.
+
+Proof of Concept:
+
+1. Current array length:
+
+   9
+
+2. User calls:
+
+   addMultipleValues(
+   10,
+   20,
+   30
+   )
+
+3. Validation executes:
+
+   require(9 < 10);
+
+4. Check passes.
+
+5. Three values are pushed.
+
+6. Final array length becomes:
+
+   12
+
+7. Maximum length restriction is bypassed.
+
+Root Cause:
+The function validates only the current array length:
+
+require(numbers.length < 10);
+
+without considering that three new elements will be added.
+
+Recommendation:
+Validate the future array length before pushing values.
+
+Example:
+
+require(
+numbers.length + 3 <= 10,
+"Array limit reached"
+);
+
+Status: Fixed
+
+Fix Implemented:
+
+require(
+numbers.length + 3 <= 10,
+"Array limit reached"
+);
+
+Result:
+
+* Array length can never exceed 10.
+* Excessive storage growth is prevented.
+* Business logic is enforced correctly.
+* Storage usage remains bounded.
+* The intended array size restriction works as expected.
+*/
 // Patched code
 contract DynamicArrayGrowth {
 
