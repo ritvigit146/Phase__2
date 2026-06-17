@@ -372,6 +372,102 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+/*
+Audit Report
+
+Title: Missing Event Logging for Whitelist Changes
+
+Severity: Low because the issue does not directly lead to unauthorized access, fund loss, or privilege escalation.
+ However, it reduces transparency, monitoring capabilities, and auditability of contract activity.
+
+Location: Contract: WhitelistSystem
+
+Functions:
+
+* addToWhitelist()
+* removeFromWhitelist()
+
+Vulnerability Description:
+
+The contract updates whitelist status without emitting events.
+
+When a user is added or removed from the whitelist, the state changes occur silently:
+
+whitelist[_user] = true;
+
+delete whitelist[_user];
+
+As a result, there is no on-chain log that records whitelist modifications.
+
+Impact:
+
+The absence of events may:
+
+* Reduce transparency
+* Make monitoring difficult
+* Complicate frontend integrations
+* Reduce auditability of administrative actions
+* Make incident investigations more difficult
+
+Users and administrators cannot easily track when addresses were added to or removed from the whitelist without inspecting storage directly.
+
+Proof of Concept:
+
+1. Deploy contract
+
+2. Call:
+   addToWhitelist(UserA)
+
+3. Observe:
+   UserA becomes whitelisted
+
+4. Check transaction logs
+
+5. Observe:
+   No event emitted
+
+6. Call:
+   removeFromWhitelist(UserA)
+
+7. Observe:
+   UserA removed from whitelist
+
+8. Check transaction logs
+
+9. Observe:
+   No event emitted for removal
+
+Root Cause:
+
+The contract updates storage directly without emitting events:
+
+whitelist[_user] = true;
+
+delete whitelist[_user];
+
+No event definitions or event emissions exist to record whitelist modifications.
+
+Recommendation:
+
+Add event declarations and emit them whenever whitelist status changes.
+
+Example:
+
+event UserWhitelisted(address indexed user);
+event UserRemoved(address indexed user);
+
+function addToWhitelist(address _user) public onlyOwner {
+whitelist[_user] = true;
+emit UserWhitelisted(_user);
+}
+
+function removeFromWhitelist(address _user) public onlyOwner {
+delete whitelist[_user];
+emit UserRemoved(_user);
+}
+
+This improves transparency, monitoring, frontend integration, and overall auditability.
+*/
 //Patched code
 contract WhitelistSystem {
 
