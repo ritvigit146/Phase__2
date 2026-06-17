@@ -401,6 +401,120 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+/*
+Audit Report
+
+Title: Missing Access Control in removeLastNumber()
+
+Severity: Medium because any user can remove stored array values, resulting in unauthorized modification of contract state.
+
+Location:
+Contract: ArrayStorage
+Function: removeLastNumber()
+
+Vulnerability Description:
+The removeLastNumber() function allows any user to remove the last element from the array.
+
+There is no ownership or authorization check before executing:
+
+numbers.pop();
+
+As a result, any external account can modify the array and delete stored data.
+
+Impact:
+A user can:
+
+* remove array elements without permission
+* alter stored records
+* disrupt application logic
+* cause loss of important data
+
+If the array represented:
+
+* transaction history
+* staking participants
+* voting records
+* whitelist members
+* reward recipients
+
+then unauthorized deletions could affect contract functionality and data integrity.
+
+Proof of Concept:
+
+1. Owner adds values:
+
+   addNumber(10)
+   addNumber(20)
+   addNumber(30)
+
+2. Array becomes:
+
+   [10, 20, 30]
+
+3. Attacker calls:
+
+   removeLastNumber()
+
+4. Transaction succeeds.
+
+5. Array becomes:
+
+   [10, 20]
+
+6. Stored data is modified by an unauthorized user.
+
+Root Cause:
+The function executes:
+
+numbers.pop();
+
+without validating the caller's permissions.
+
+Recommendation:
+Restrict removal operations to the contract owner.
+
+Example:
+
+require(
+msg.sender == owner,
+"Not owner"
+);
+
+Status: Fixed
+
+Fix Implemented:
+
+address public owner;
+
+constructor() {
+owner = msg.sender;
+}
+
+function removeLastNumber() public {
+require(
+msg.sender == owner,
+"Not owner"
+);
+
+```
+require(
+    numbers.length > 0,
+    "Array is empty"
+);
+
+numbers.pop();
+```
+
+}
+
+Result:
+
+* Only the owner can remove elements.
+* Unauthorized users cannot modify stored data.
+* Array integrity is preserved.
+* Risk of malicious deletions is eliminated.
+* Access control is enforced correctly.
+*/
 //Patched code
 contract ArrayStorage {
 
