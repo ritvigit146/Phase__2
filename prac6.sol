@@ -78,7 +78,7 @@ contract StructStorageVul {
         bool isActive;
     }
 
-    mapping(address => User) public users;
+    User public user;
 
     function storeUser(
         string memory _name,
@@ -86,17 +86,10 @@ contract StructStorageVul {
         address _wallet,
         bool _isActive
     ) public {
-        require(_wallet != address(0), "Zero address");
-
-        users[msg.sender] = User(
-            _name,
-            _age,
-            _wallet,
-            _isActive
-        );
+        user = User(_name, _age, _wallet, _isActive);
     }
 
-    function getMyProfile()
+    function getUser()
         public
         view
         returns (
@@ -106,8 +99,6 @@ contract StructStorageVul {
             bool
         )
     {
-        User memory user = users[msg.sender];
-
         return (
             user.name,
             user.age,
@@ -381,57 +372,94 @@ IMPORTANT CONCEPTS LEARNED
 /*
 Audit Report
 
-Title: Missing Wallet Address Validation in storeUser()
+Title: Global Struct Overwrite Due to Single Shared Storage
 
-Severity: Low because users can store an invalid wallet address,
-but cannot overwrite another user's profile.
+Severity: Medium
 
 Location:
-Contract: StructStorage
+Contract: StructStorageVul
 Function: storeUser()
 
-Vulnerability Description:
-The storeUser() function allows users to store a profile with
-address(0) as the wallet address. There is no validation to
-prevent invalid wallet addresses from being stored.
+Vulnerability Description
 
-Impact:
-A user can:
+The contract stores all user information in a single global User struct:
 
-- store address(0) as wallet
-- create invalid profile data
-- cause confusion in applications using the profile data
+User public user;
 
-If the wallet field represented:
+Any user calling storeUser() overwrites the entire existing struct stored in the contract.
 
-- payment recipient
-- ownership information
-- reward destination
-- account verification
+As a result, multiple users cannot maintain separate profiles, and one user can replace data previously stored by another user.
 
-then invalid addresses could lead to incorrect behavior.
+Impact
 
-Proof of Concept:
+An attacker or normal user can overwrite existing profile data.
 
-1. User calls:
+If the struct contains important information such as:
 
-   storeUser(
-       "Alice",
-       25,
-       address(0),
-       true
-   )
+KYC information
+staking positions
+reward configurations
+admin settings
+marketplace listings
 
-2. Transaction succeeds.
+then previously stored data can be permanently replaced.
 
-3. Stored profile becomes:
+This may lead to:
 
-   wallet = address(0)
+loss of user data
+incorrect protocol state
+unauthorized modification of records
+disruption of application functionality
+Proof of Concept
+Deploy contract.
+User A calls:
+storeUser(
+    "Alice",
+    30,
+    walletA,
+    true
+);
 
-4. Invalid profile data is stored successfully.
+State:
 
-Root Cause:
-The function stores the wallet address directly:
+name = Alice
+age = 30
+wallet = walletA
+isActive = true
+User B calls:
+storeUser(
+    "Bob",
+    25,
+    walletB,
+    true
+);
+Contract state becomes:
+name = Bob
+age = 25
+wallet = walletB
+isActive = true
+Alice's profile is completely overwritten.
+Root Cause
+
+The contract uses a single shared struct:
+
+User public user;
+
+All users write to the same storage location through:
+
+user = User(_name, _age, _wallet, _isActive);
+
+No user-specific storage mechanism exists.
+
+Recommendation
+
+Store profiles using a mapping so each address has isolated storage.
+
+Example:
+
+mapping(address => User) public users;
+
+Store data using:
 
 users[msg.sender] = User(
     _name,
@@ -440,34 +468,9 @@ users[msg.sender] = User(
     _isActive
 );
 
-without validating that _wallet is not the zero address.
-
-Recommendation:
-Validate wallet addresses before storing.
-
-Example:
-
-require(
-    _wallet != address(0),
-    "Invalid wallet"
-);
-
-Status: Fixed
-
-Fix Implemented:
-
-require(
-    _wallet != address(0),
-    "Invalid wallet"
-);
-
-Result:
-
-- Zero address storage is prevented.
-- Profile data remains valid.
-- Invalid wallet entries are rejected.
-- Data integrity is improved.
+Additionally, ensure users can only update their own profiles.
 */
+
 //Patched code
 contract StructStorage {
 
@@ -486,6 +489,12 @@ contract StructStorage {
         address _wallet,
         bool _isActive
     ) public {
+
+        require(
+            _wallet == msg.sender,
+            "Can only store own profile"
+        );
+
         users[msg.sender] = User(
             _name,
             _age,
@@ -494,7 +503,7 @@ contract StructStorage {
         );
     }
 
-    function getUser(address _user)
+    function getMyProfile()
         public
         view
         returns (
@@ -504,7 +513,7 @@ contract StructStorage {
             bool
         )
     {
-        User memory user = users[_user];
+        User memory user = users[msg.sender];
 
         return (
             user.name,

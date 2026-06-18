@@ -7,7 +7,7 @@
 		"abi": [
 			{
 				"inputs": [],
-				"name": "getMyProfile",
+				"name": "getUser",
 				"outputs": [
 					{
 						"internalType": "string",
@@ -62,14 +62,8 @@
 				"type": "function"
 			},
 			{
-				"inputs": [
-					{
-						"internalType": "address",
-						"name": "",
-						"type": "address"
-					}
-				],
-				"name": "users",
+				"inputs": [],
+				"name": "user",
 				"outputs": [
 					{
 						"internalType": "string",
@@ -124,11 +118,11 @@
 	},
 	"sources": {
 		"prac6.sol": {
-			"keccak256": "0x09e70bd25b83bc2a611656607ae05b7685cf29875db35f8f0760b4459d8446ab",
+			"keccak256": "0x297af84c775c7f5699d86cb5a00d72641a94cfe52c01335db57c947d85e035db",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://536ec0577aeb1cfc7a55fd40e8db6c4824f93f0ffcbf2c0ed2f9f840f9963763",
-				"dweb:/ipfs/QmVfHcSci8MkoFwPcg2uCL1bmS1QUSk9e3xczpg1E5owd3"
+				"bzz-raw://6f3ceac8bc746c634029cef7a81f26228fc4d52e4aa4e58fd724a045d2f191ec",
+				"dweb:/ipfs/QmWC7Yhw3paVev7e2PrjX74NsFBpeDK19B8LxpyC8NfrrS"
 			]
 		}
 	},
