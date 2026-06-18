@@ -68,26 +68,12 @@ Auditors check:
 
 =========================================================
 */
-
 contract StoreBooleanVul {
 
     bool public isActive;
-    address public owner;
 
-    constructor() {
-        owner = msg.sender;
-    }
-
-    // Only owner can update status
     function setStatus(bool _status) public {
-        require(msg.sender == owner, "Only owner");
         isActive = _status;
-    }
-
-    // Mini Challenge: Toggle current status
-    function toggleStatus() public {
-        require(msg.sender == owner, "Only owner");
-        isActive = !isActive;
     }
 
     function getStatus() public view returns (bool) {
@@ -328,67 +314,77 @@ IMPORTANT CONCEPTS LEARNED
 /*
 Audit Report
 
-Title: Missing Access Control in setStatus() and toggleStatus()
+Title: Missing Access Control in setStatus()
 
-Severity: Medium because any external user can modify critical boolean state affecting contract logic
+Severity: Medium
 
 Location:
 Contract: StoreBooleanVul
-Functions: setStatus(), toggleStatus()
+Function: setStatus()
 
-Vulnerability Description:
-The contract allows any external user to modify the isActive state variable because no access control mechanism is implemented. 
-Both setStatus() and toggleStatus() are declared public without authorization checks.
+Vulnerability Description
 
-Impact:
-An attacker can arbitrarily change the boolean state, which may control critical protocol behavior such as:
+The setStatus() function allows any external user to modify the isActive state variable because no access control mechanism is implemented.
 
-- pausing/unpausing contract operations
-- enabling/disabling withdrawals
-- bypassing security restrictions
-- manipulating system workflow
+Boolean variables are commonly used to control critical protocol functionality such as:
 
-This can lead to serious protocol malfunction or unauthorized access to restricted functionality.
+pause/unpause mechanisms
+access permissions
+withdrawal status
+transaction execution tracking
+security controls
 
-Proof of Concept:
+Because the function is publicly accessible, unauthorized users can manipulate the contract state.
 
-1. Deploy contract
-2. User A calls:
-   setStatus(true)
-3. Attacker calls:
-   toggleStatus()
-4. Contract state changes successfully without restriction
+Impact
 
-Root Cause:
-Both functions are declared public and lack any require() statement to verify the caller identity.
+An attacker can arbitrarily change the value of isActive.
 
-Recommendation:
-Restrict access to trusted users (e.g., owner) using access control.
+If the boolean flag controls critical protocol logic, this may:
 
-Example fix:
-require(msg.sender == owner, "Only owner");
+enable restricted functionality
+disable protocol operations
+bypass intended restrictions
+interfere with normal system behavior
 
-OR implement owner-based control:
+For example, if isActive controls withdrawals:
 
-address public owner;
+true → withdrawals allowed
+false → withdrawals blocked
 
-constructor() {
-    owner = msg.sender;
-}
+An attacker could enable or disable withdrawals at will.
+
+Proof of Concept
+Deploy contract.
+
+Initial state:
+
+isActive = false
+Attacker calls:
+setStatus(true);
+Transaction succeeds.
+Contract state becomes:
+isActive = true
+Attacker can continue modifying the state:
+setStatus(false);
+setStatus(true);
+
+No authorization is required.
+
+Root Cause
+
+The function is declared public without any authorization checks.
 
 function setStatus(bool _status) public {
-    require(msg.sender == owner, "Only owner");
     isActive = _status;
 }
 
-function toggleStatus() public {
-    require(msg.sender == owner, "Only owner");
-    isActive = !isActive;
-}
+No validation is performed to ensure that only trusted users can modify the boolean state.
 
-Status: Fixed in secured version when access control is added.
+Recommendation
+
+Implement access control so that only authorized users can modify the status.
 */
-
 //Patched code
 contract StoreBoolean {
 
@@ -398,7 +394,6 @@ contract StoreBoolean {
         isActive = _status;
     }
 
-    // Toggle boolean state
     function toggleStatus() public {
         isActive = !isActive;
     }

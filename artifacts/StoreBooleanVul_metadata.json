@@ -7,11 +7,6 @@
 		"abi": [
 			{
 				"inputs": [],
-				"stateMutability": "nonpayable",
-				"type": "constructor"
-			},
-			{
-				"inputs": [],
 				"name": "getStatus",
 				"outputs": [
 					{
@@ -37,19 +32,6 @@
 				"type": "function"
 			},
 			{
-				"inputs": [],
-				"name": "owner",
-				"outputs": [
-					{
-						"internalType": "address",
-						"name": "",
-						"type": "address"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
 				"inputs": [
 					{
 						"internalType": "bool",
@@ -58,13 +40,6 @@
 					}
 				],
 				"name": "setStatus",
-				"outputs": [],
-				"stateMutability": "nonpayable",
-				"type": "function"
-			},
-			{
-				"inputs": [],
-				"name": "toggleStatus",
 				"outputs": [],
 				"stateMutability": "nonpayable",
 				"type": "function"
@@ -98,11 +73,11 @@
 	},
 	"sources": {
 		"prac4.sol": {
-			"keccak256": "0x68b3260b301d49c7866d09a62c6fd1322713ef06258a426aee61d53551b78b53",
+			"keccak256": "0x96fb55c0f064be972e72506bfd1e3ff872426fb357ec1c66c4c98a200bde2981",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://12b4a26a29bf06e6d2f08f51fc7c91da4e6fb1a5b91edca57f3ca806f6587821",
-				"dweb:/ipfs/Qme9j4trVx1XXhuB8KbJN6qzbfp19ZiSWwcPfDUJ1t7mwy"
+				"bzz-raw://8fbdf4887c249247ed3ff4b0e377536657f77b42548487bffaf4f9b8cfbbf9a7",
+				"dweb:/ipfs/QmWmEhoZXRBkNgCu5uP8JLBfVBTrNe1fYrAjpVHsX68Wok"
 			]
 		}
 	},
