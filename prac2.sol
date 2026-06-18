@@ -43,22 +43,12 @@ Auditors check:
 =========================================================
 */
 
-contract StateOverwriteVul{
+contract StateOverwriteVul {
 
     uint256 public number;
-    address public owner;
-
-    constructor() {
-        owner = msg.sender;
-    }
 
     function updateNumber(uint256 _newNumber) public {
-        require(msg.sender == owner, "Only owner can update");
         number = _newNumber;
-    }
-
-    function getNumber() public view returns (uint256) {
-        return number;
     }
 }
 
@@ -288,35 +278,38 @@ Audit Report
 
 Title: Loss of Previous State Due to Overwrite
 
-Severity: Low ecause it's mainly a data/history preservation issue, not an immediate security exploit like 
-missing access control or fund theft
+Severity: Low
 
-Location: Contract: StateOverwriteVul
-
+Location:
+Contract: StateOverwriteVul
 Function: updateNumber()
 
-Vulnerability Description: The updateNumber() function overwrites the number state variable without 
-preserving its previous value.Each new update permanently replaces the old value in storage. As a result, 
-historical state information is lost and cannot be accessed by the contract.
+Vulnerability Description
 
-Impact: Previous values are permanently lost after each update, making it difficult to track state changes
-and review contract behavior over time.
+The updateNumber() function overwrites the number state variable without preserving its previous value.
 
-Loss of previous state values may:
+Each update permanently replaces the existing value stored in contract storage. As a result, historical state information is lost and cannot be retrieved directly from the contract.
 
-* Reduce auditability
-* Make debugging difficult
-* Prevent recovery of important information
-* Cause issues if protocol logic depends on historical values
+Impact
 
-If the variable represented critical data such as:
+Previous values are permanently lost after every update.
 
-* protocol fee
-* token price
-* voting result
-* configuration parameter
+This may:
 
-then previous values would be unavailable after an update.
+Reduce auditability
+Make debugging more difficult
+Prevent access to historical state data
+Complicate protocol monitoring and incident investigations
+
+If the variable represented critical protocol data such as:
+
+- protocol fee
+- token price
+- governance parameter
+- voting result
+- treasury configuration
+
+then previous values would be unavailable after modification.
 
 Proof of Concept:
                1. Deploy contract
@@ -347,20 +340,8 @@ contract StateOverwrite {
     uint256 public previousNumber;
 
     function updateNumber(uint256 _newNumber) public {
-
-        // Save old value before overwrite
         previousNumber = number;
-
-        // Store new value
         number = _newNumber;
-    }
-
-    function getNumber() public view returns (uint256) {
-        return number;
-    }
-
-    function getPreviousNumber() public view returns (uint256) {
-        return previousNumber;
     }
 }
 

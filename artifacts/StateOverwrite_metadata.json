@@ -7,32 +7,6 @@
 		"abi": [
 			{
 				"inputs": [],
-				"name": "getNumber",
-				"outputs": [
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"inputs": [],
-				"name": "getPreviousNumber",
-				"outputs": [
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"inputs": [],
 				"name": "number",
 				"outputs": [
 					{
@@ -99,11 +73,11 @@
 	},
 	"sources": {
 		"prac2.sol": {
-			"keccak256": "0x057a4347d1ae7d459c285999afaaac63a7589af1d0ac8c84ac66b739cb5d450b",
+			"keccak256": "0x8e5c4d1babc6856fa4b066af5f4c3a55ed4bc2fd1ef12e4dbe2d40219ecc30c9",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://c9ac7a7caf7b08dedf8e80c770030d8b0b34fe5059ee0f03057769f986525de8",
-				"dweb:/ipfs/QmTSSocTBX1s5owoWbD4bGNCU9wJB1CKehMJuaeTN4vwCU"
+				"bzz-raw://d36e4d6539ff63c8251e0c1c1c7da18b0e1c53603f31f91257bfd09204be4757",
+				"dweb:/ipfs/QmVSBHHU3aazdDtfAf7uMf4vu5vfpoAJGj6P4vT4xX8ue3"
 			]
 		}
 	},
