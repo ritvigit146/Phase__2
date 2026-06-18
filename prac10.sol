@@ -96,7 +96,6 @@ contract WhitelistVul {
         return whitelist[_user];
     }
 }
-
 /*
 =========================================================
 EXECUTION FLOW
