@@ -71,20 +71,12 @@ Auditors inspect:
 contract SparseArrayBehaviorVul {
 
     uint256[] public numbers;
-    address public owner;
-
-    constructor() {
-        owner = msg.sender;
-    }
 
     function addNumber(uint256 _number) public {
         numbers.push(_number);
     }
 
     function deleteItem(uint256 _index) public {
-        require(msg.sender == owner, "Not owner");
-        require(_index < numbers.length, "Invalid index");
-
         delete numbers[_index];
     }
 
@@ -408,137 +400,131 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+// Transaction Cost
+// Higher than vulnerable version because elements are shifted before removal.
+
+// Execution Cost
+// O(n) where n = number of elements after the removed index.
+
 /*
 Audit Report
 
-Title: Unrestricted Array Element Removal in removeItem()
+Title: Sparse Array Creation Due to Improper Array Deletion
 
-Severity: Medium because any user can remove array elements, resulting in unauthorized modification of contract state.
+Severity: Medium because deleted entries remain in storage and may
+cause incorrect accounting, iteration bugs, and business logic failures.
 
 Location:
-Contract: SparseArrayBehaviorFixed
-Function: removeItem()
+Contract: SparseArrayBehaviorVul
+Function: deleteItem()
 
 Vulnerability Description:
-The removeItem() function allows any user to remove any element from the array.
 
-The function performs array modification and length reduction without verifying whether the caller is authorized.
+The deleteItem() function uses:
 
-As a result, any external account can delete stored values and alter the array structure.
+delete numbers[_index];
+
+When delete is used on an array element, Solidity only resets the
+element value to its default value (0 for uint256).
+
+The array length remains unchanged and the index continues to exist.
+
+Example:
+
+Before:
+[5,10,15]
+
+After deleteItem(1):
+[5,0,15]
+
+Length:
+3
+
+This creates a sparse array containing empty slots.
 
 Impact:
-A user can:
 
-* remove array entries without permission
-* modify stored records
-* disrupt business logic
-* alter historical data
-* interfere with application functionality
-
-If the array represented:
-
-* staking participants
-* governance proposals
-* voting records
-* whitelist members
-* reward recipients
-
-then unauthorized removals could affect protocol integrity and lead to incorrect behavior.
+- Incorrect participant counting
+- Reward distribution errors
+- Governance voting miscalculations
+- Processing deleted entries as valid records
+- Unexpected behavior when iterating through arrays
+- Storage inefficiency caused by fragmented arrays
 
 Proof of Concept:
 
-1. User adds values:
+1. Deploy contract
 
+2. Call:
    addNumber(5)
    addNumber(10)
    addNumber(15)
 
-2. Array becomes:
-
+   Array:
    [5,10,15]
 
-3. Attacker calls:
+3. Call:
+   deleteItem(1)
 
-   removeItem(1)
+   Array becomes:
+   [5,0,15]
 
-4. Transaction succeeds.
+4. Call:
+   getLength()
 
-5. Elements shift left.
+   Returns:
+   3
 
-6. Array becomes:
+Expected result:
+[5,15]
 
-   [5,15]
-
-7. Stored data is modified by an unauthorized user.
+Actual result:
+[5,0,15]
 
 Root Cause:
-The function modifies storage directly:
 
-for (uint256 i = _index; i < numbers.length - 1; i++) {
-numbers[i] = numbers[i + 1];
-}
+The contract assumes that:
 
-numbers.pop();
+delete numbers[_index];
 
-without validating the caller's permissions.
+removes an array element.
+
+However, delete only resets the value stored at that index and does
+not shift elements or decrease the array length.
 
 Recommendation:
-Restrict removal operations to the contract owner.
+
+Remove the element completely by:
+
+1. Shifting all subsequent elements left
+2. Removing the last duplicated element using pop()
 
 Example:
 
-require(
-msg.sender == owner,
-"Not owner"
-);
-
-Status: Fixed
-
-Fix Implemented:
-
-address public owner;
-
-constructor() {
-owner = msg.sender;
-}
-
-function removeItem(uint256 _index) public {
-require(
-msg.sender == owner,
-"Not owner"
-);
-
-```
-require(
-    _index < numbers.length,
-    "Invalid index"
-);
-
-for (
-    uint256 i = _index;
-    i < numbers.length - 1;
-    i++
-) {
+for (uint256 i = _index; i < numbers.length - 1; i++) {
     numbers[i] = numbers[i + 1];
 }
 
 numbers.pop();
-```
 
-}
+Patched Behavior:
 
-Result:
+Before:
+[5,10,15]
 
-* Only the owner can remove elements.
-* Unauthorized users cannot modify stored data.
-* Array integrity is preserved.
-* Elements are removed completely.
-* Array length decreases correctly.
-* Risk of malicious deletions is eliminated.
+removeItem(1)
+
+After:
+[5,15]
+
+Length:
+2
+
+This eliminates sparse array gaps and maintains a consistent array structure.
 
 */
 // Patched code
-contract SparseArrayBehaviorFixed {
+contract SparseArrayBehavior {
 
     uint256[] public numbers;
 
@@ -549,12 +535,10 @@ contract SparseArrayBehaviorFixed {
     function removeItem(uint256 _index) public {
         require(_index < numbers.length, "Invalid index");
 
-        // Shift elements left
         for (uint256 i = _index; i < numbers.length - 1; i++) {
             numbers[i] = numbers[i + 1];
         }
 
-        // Remove last element
         numbers.pop();
     }
 
