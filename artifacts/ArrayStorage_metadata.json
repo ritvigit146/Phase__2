@@ -105,11 +105,11 @@
 	},
 	"sources": {
 		"prac7.sol": {
-			"keccak256": "0x397c811fa8d929e3fb87f485bda2d106b63c7c4bf1a3ac15b515f55b302f99bb",
+			"keccak256": "0xe717a0544f2b17c922a5b8c18f2c7bc2adb82082e84d6b8d8c2f0b80a9afb2d2",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://8a73e659a852ec3552a720b58390256c8c0cc7a0062f307d895702a93e5be5b1",
-				"dweb:/ipfs/QmQi2UrEakLqr7L22zpwamNBhz7wTx8FWLzC2noWYbipv7"
+				"bzz-raw://48ed5ea440fe73eb782bf2f6f4a177678acbbfb5fdc29e74055b5980cfc3b196",
+				"dweb:/ipfs/QmTn9otD6Bqn9mD9TB9XUvGrkPqwf4QMSWNUGGaMjnK9go"
 			]
 		}
 	},

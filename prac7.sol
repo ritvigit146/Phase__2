@@ -78,14 +78,8 @@ Auditors check:
 contract ArrayStorageVul {
 
     uint256[] public numbers;
-    address public owner;
-
-    constructor() {
-        owner = msg.sender;
-    }
 
     function addNumber(uint256 _number) public {
-        require(msg.sender == owner, "Not owner");
         numbers.push(_number);
     }
 
@@ -403,117 +397,88 @@ IMPORTANT CONCEPTS LEARNED
 */
 /*
 Audit Report
+Title
 
-Title: Missing Access Control in removeLastNumber()
+Unbounded Array Growth Due to Missing Removal Controls
 
-Severity: Medium because any user can remove stored array values, resulting in unauthorized modification of contract state.
+Severity
 
-Location:
-Contract: ArrayStorage
-Function: removeLastNumber()
+Low
 
-Vulnerability Description:
-The removeLastNumber() function allows any user to remove the last element from the array.
+This issue does not directly lead to fund theft or unauthorized access. However, the array can grow indefinitely, increasing
+ storage usage and potentially contributing to gas-related scalability problems.
 
-There is no ownership or authorization check before executing:
+Location
 
-numbers.pop();
+Contract: ArrayStorageVul
+Function: addNumber()
 
-As a result, any external account can modify the array and delete stored data.
+Vulnerability Description
 
-Impact:
-A user can:
+The contract allows unlimited additions to the numbers array through the addNumber() function.
 
-* remove array elements without permission
-* alter stored records
-* disrupt application logic
-* cause loss of important data
+There is no mechanism to remove elements from the array, causing permanent growth of on-chain storage.
 
-If the array represented:
+Over time, excessive array growth may increase storage costs and make future array-processing operations expensive if
+ additional functionality is added.
 
-* transaction history
-* staking participants
-* voting records
-* whitelist members
-* reward recipients
+Impact
 
-then unauthorized deletions could affect contract functionality and data integrity.
+Unbounded array growth may:
 
-Proof of Concept:
+Increase blockchain storage consumption
+Increase gas costs for future array operations
+Create scalability issues
+Contribute to denial-of-service risks if loops are later introduced
 
-1. Owner adds values:
+Although the current contract does not iterate over the array, large arrays often become problematic when future 
+functionality depends on processing all elements.
 
-   addNumber(10)
-   addNumber(20)
-   addNumber(30)
+Proof of Concept
+Deploy contract
+Call:
+addNumber(10);
+addNumber(20);
+addNumber(30);
 
-2. Array becomes:
+State:
 
-   [10, 20, 30]
+numbers = [10,20,30]
+Continue calling:
+addNumber(40);
+addNumber(50);
+addNumber(60);
 
-3. Attacker calls:
+Array continues growing:
 
-   removeLastNumber()
+numbers = [10,20,30,40,50,60]
+Observe:
+Array size increases indefinitely
+No function exists to reduce array length
+Storage usage continuously grows
+Root Cause
 
-4. Transaction succeeds.
+The contract only supports adding elements:
 
-5. Array becomes:
+function addNumber(uint256 _number) public {
+    numbers.push(_number);
+}
 
-   [10, 20]
+No mechanism exists to remove elements from storage.
 
-6. Stored data is modified by an unauthorized user.
+Recommendation
 
-Root Cause:
-The function executes:
+Provide a controlled method for removing elements when they are no longer needed.
 
-numbers.pop();
-
-without validating the caller's permissions.
-
-Recommendation:
-Restrict removal operations to the contract owner.
+For the challenge requirements, implement a function that removes the last element using pop() and prevents removal from an 
+empty array.
 
 Example:
 
-require(
-msg.sender == owner,
-"Not owner"
-);
-
-Status: Fixed
-
-Fix Implemented:
-
-address public owner;
-
-constructor() {
-owner = msg.sender;
-}
-
 function removeLastNumber() public {
-require(
-msg.sender == owner,
-"Not owner"
-);
-
-```
-require(
-    numbers.length > 0,
-    "Array is empty"
-);
-
-numbers.pop();
-```
-
+    require(numbers.length > 0, "Array is empty");
+    numbers.pop();
 }
-
-Result:
-
-* Only the owner can remove elements.
-* Unauthorized users cannot modify stored data.
-* Array integrity is preserved.
-* Risk of malicious deletions is eliminated.
-* Access control is enforced correctly.
 */
 //Patched code
 contract ArrayStorage {
@@ -522,6 +487,12 @@ contract ArrayStorage {
 
     function addNumber(uint256 _number) public {
         numbers.push(_number);
+    }
+
+    function removeLastNumber() public {
+        require(numbers.length > 0, "Array is empty");
+
+        numbers.pop();
     }
 
     function getNumber(uint256 _index)
@@ -534,11 +505,5 @@ contract ArrayStorage {
 
     function getLength() public view returns (uint256) {
         return numbers.length;
-    }
-
-    // MINI CHALLENGE
-    function removeLastNumber() public {
-        require(numbers.length > 0, "Array is empty");
-        numbers.pop();
     }
 }
