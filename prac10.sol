@@ -76,21 +76,24 @@ Auditors inspect:
 
 =========================================================
 */
+contract WhitelistVul {
 
-contract DeleteMappingEntry {
+    mapping(address => bool) public whitelist;
 
-    mapping(address => uint256) public balances;
-
-    function setBalance(uint256 _amount) public {
-        balances[msg.sender] = _amount;
+    function addToWhitelist() public {
+        whitelist[msg.sender] = true;
     }
 
-    function deleteMyBalance() public {
-        delete balances[msg.sender];
+    function removeFromWhitelist() public {
+        delete whitelist[msg.sender];
     }
 
-    function getMyBalance() public view returns (uint256) {
-        return balances[msg.sender];
+    function isWhitelisted(address _user)
+        public
+        view
+        returns (bool)
+    {
+        return whitelist[_user];
     }
 }
 
@@ -375,127 +378,87 @@ IMPORTANT CONCEPTS LEARNED
 /*
 Audit Report
 
-Title: Missing Event Logging for Whitelist Changes
+Title: Missing Access Control in Whitelist Management
 
-Severity: Low because the issue does not directly lead to unauthorized access, fund loss, or privilege escalation.
- However, it reduces transparency, monitoring capabilities, and auditability of contract activity.
+Severity: Medium
 
-Location: Contract: WhitelistSystem
+Contract: WhitelistVul
 
 Functions:
 
-* addToWhitelist()
-* removeFromWhitelist()
+addToWhitelist()
+removeFromWhitelist()
+Vulnerability Description
 
-Vulnerability Description:
+The contract allows any user to add themselves to the whitelist by calling addToWhitelist().
 
-The contract updates whitelist status without emitting events.
+There is no authorization mechanism to ensure that only a trusted administrator can manage whitelist membership.
 
-When a user is added or removed from the whitelist, the state changes occur silently:
+Since whitelist status is commonly used to grant privileged access to sensitive functionality, unauthorized users may obtain permissions that were intended only for approved addresses.
 
-whitelist[_user] = true;
+Impact
 
-delete whitelist[_user];
+An attacker can:
 
-As a result, there is no on-chain log that records whitelist modifications.
+Add themselves to the whitelist
+Gain access to restricted functions
+Bypass whitelist-based security controls
+Circumvent protocol access restrictions
 
-Impact:
+If whitelist membership controls critical operations, this could lead to unauthorized actions within the protocol.
 
-The absence of events may:
+Proof of Concept
+Initial State
+whitelist[attacker] = false
+Attacker Call
+addToWhitelist();
+Result
+whitelist[attacker] = true
 
-* Reduce transparency
-* Make monitoring difficult
-* Complicate frontend integrations
-* Reduce auditability of administrative actions
-* Make incident investigations more difficult
+The attacker becomes whitelisted without any approval from the contract owner.
 
-Users and administrators cannot easily track when addresses were added to or removed from the whitelist without inspecting storage directly.
+Root Cause
 
-Proof of Concept:
+The function lacks access control.
 
-1. Deploy contract
+function addToWhitelist() public {
+    whitelist[msg.sender] = true;
+}
 
-2. Call:
-   addToWhitelist(UserA)
+Any caller can modify whitelist state for themselves.
 
-3. Observe:
-   UserA becomes whitelisted
+Recommendation
 
-4. Check transaction logs
-
-5. Observe:
-   No event emitted
-
-6. Call:
-   removeFromWhitelist(UserA)
-
-7. Observe:
-   UserA removed from whitelist
-
-8. Check transaction logs
-
-9. Observe:
-   No event emitted for removal
-
-Root Cause:
-
-The contract updates storage directly without emitting events:
-
-whitelist[_user] = true;
-
-delete whitelist[_user];
-
-No event definitions or event emissions exist to record whitelist modifications.
-
-Recommendation:
-
-Add event declarations and emit them whenever whitelist status changes.
+Implement owner-based access control so that only the contract owner can add or remove whitelist members.
 
 Example:
 
-event UserWhitelisted(address indexed user);
-event UserRemoved(address indexed user);
+require(msg.sender == owner, "Only owner");
 
-function addToWhitelist(address _user) public onlyOwner {
-whitelist[_user] = true;
-emit UserWhitelisted(_user);
-}
-
-function removeFromWhitelist(address _user) public onlyOwner {
-delete whitelist[_user];
-emit UserRemoved(_user);
-}
-
-This improves transparency, monitoring, frontend integration, and overall auditability.
+Apply this check to all whitelist management functions.
 */
 //Patched code
-contract WhitelistSystem {
+contract Whitelist {
 
-    address public owner;
-
-    // Whitelist mapping
     mapping(address => bool) public whitelist;
+    address public owner;
 
     constructor() {
         owner = msg.sender;
     }
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not owner");
-        _;
-    }
+    function addToWhitelist(address _user) public {
+        require(msg.sender == owner, "Only owner");
 
-    // Add user to whitelist
-    function addToWhitelist(address _user) public onlyOwner {
         whitelist[_user] = true;
     }
 
-    // Remove user from whitelist
-    function removeFromWhitelist(address _user) public onlyOwner {
+    function removeFromWhitelist(address _user) public {
+        require(msg.sender == owner, "Only owner");
+
         delete whitelist[_user];
     }
 
-    // Check whitelist status
     function isWhitelisted(address _user)
         public
         view
