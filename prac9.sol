@@ -72,20 +72,7 @@ Auditors inspect:
 */
 contract DeleteStorageVariableVul {
 
-    uint256 public number = 100;
-    bool public isActive = true;
-
-    address public owner =
-        0x1111111111111111111111111111111111111111;
-
-    string public message = "Blockchain";
-
     uint256[] public numbers;
-
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not owner");
-        _;
-    }
 
     constructor() {
         numbers.push(10);
@@ -93,56 +80,18 @@ contract DeleteStorageVariableVul {
         numbers.push(30);
     }
 
-    function deleteNumber() public onlyOwner {
-        delete number;
-    }
-
-    function deleteBool() public onlyOwner {
-        delete isActive;
-    }
-
-    // Prevent accidental deletion of owner
-    function deleteOwner() public onlyOwner {
-        revert("Owner deletion not allowed");
-    }
-
-    function deleteMessage() public onlyOwner {
-        delete message;
-    }
-
-    function deleteArray() public onlyOwner {
-        delete numbers;
-    }
-
-    /*
-     * Remove element without creating holes
-     */
-    function deleteArrayIndex(
-        uint256 _index
-    )
-        public
-        onlyOwner
-    {
-        require(
-            _index < numbers.length,
-            "Invalid index"
-        );
-
-        numbers[_index] =
-            numbers[numbers.length - 1];
-
-        numbers.pop();
+    function deleteArrayIndex(uint256 _index) public {
+        delete numbers[_index];
     }
 
     function getArray()
         public
         view
-        returns (uint256[] memory)
+        returns(uint256[] memory)
     {
         return numbers;
     }
 }
-
 /*
 =========================================================
 EXECUTION FLOW
@@ -483,25 +432,135 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
-// Patched code
-contract ArrayRemovalFixed {
+/*
+Audit Report
+
+Title: Array Hole Creation Due to delete on Array Index
+
+Severity: Medium because array integrity can be broken and unexpected zero values may affect protocol logic
+
+Location:
+Contract: DeleteStorageVariableVul
+Function: deleteArrayIndex()
+
+Vulnerability Description:
+
+The deleteArrayIndex() function uses:
+
+delete numbers[_index];
+
+This does not remove the element from the array.
+
+Instead, it resets the element to its default value (0 for uint256)
+while keeping the array length unchanged.
+
+As a result, sparse arrays (arrays with holes) are created.
+
+Example:
+
+Before:
+[10,20,30]
+
+After deleteArrayIndex(1):
+[10,0,30]
+
+Length remains:
+3
+
+Impact:
+
+An attacker or user can create unexpected zero values inside the array.
+
+If the array is later used for:
+
+- accounting
+- reward calculations
+- voting logic
+- participant tracking
+- iteration-based calculations
+
+the protocol may process invalid data and produce incorrect results.
+
+Proof of Concept:
+
+1. Deploy contract
+
+2. Call:
+   getArray()
+
+   Result:
+   [10,20,30]
+
+3. Call:
+   deleteArrayIndex(1)
+
+4. Call:
+   getArray()
+
+   Result:
+   [10,0,30]
+
+5. Observe:
+   Array length is still 3
+   Element was not removed
+
+Root Cause:
+
+The contract incorrectly assumes:
+
+delete numbers[_index];
+
+removes an array element.
+
+In Solidity, delete only resets the value to its default value.
+It does not shrink the array.
+
+Recommendation:
+
+Use the swap-and-pop pattern to properly remove elements.
+
+Example:
+
+require(_index < numbers.length, "Invalid index");
+
+numbers[_index] = numbers[numbers.length - 1];
+numbers.pop();
+
+This:
+
+- removes the element
+- shrinks the array
+- prevents holes
+- is gas efficient
+
+Status:
+
+Fixed in DeleteStorageVariable contract using swap-and-pop removal.
+*/
+//Patched code
+contract DeleteStorageVariable {
+
     uint256[] public numbers;
 
-    function addNumber(uint256 _number) public {
-        numbers.push(_number);
+    constructor() {
+        numbers.push(10);
+        numbers.push(20);
+        numbers.push(30);
     }
 
-    function remove(uint256 _index) public {
+    function removeArrayIndex(uint256 _index) public {
         require(_index < numbers.length, "Invalid index");
 
-        // Move last element to the position being removed
         numbers[_index] = numbers[numbers.length - 1];
 
-        // Remove last element and shrink array
         numbers.pop();
     }
 
-    function getArray() public view returns (uint256[] memory) {
+    function getArray()
+        public
+        view
+        returns(uint256[] memory)
+    {
         return numbers;
     }
 }
