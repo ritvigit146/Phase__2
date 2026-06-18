@@ -108,11 +108,11 @@
 	},
 	"sources": {
 		"prac8.sol": {
-			"keccak256": "0xbba18429fb154737b34effe1bca522b18b7ea241cbae6e61775594e3e68e168b",
+			"keccak256": "0x7353ac75895648a16ec9c29f313134b66b46eaa6a88bacbd9887e67691f7e8de",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://0dfe031968fc984d1b32e84e53ce0c6c4c99806ecefe5535f56848e28c394886",
-				"dweb:/ipfs/QmYUR1x2zuBLB4uTZ59BnuT5W6GzpJEFD6Sq9wonoZDP98"
+				"bzz-raw://7c1925a782d5cf4a0d6b2206996a6d8cda6050e8e5135ae0369aea00bfafc49c",
+				"dweb:/ipfs/QmQRv475UhypSLgR89o8DZMjJBmwdEWbV85rBHbCibJvCB"
 			]
 		}
 	},

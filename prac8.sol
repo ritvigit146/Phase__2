@@ -74,9 +74,6 @@ contract DynamicArrayGrowthVul {
         uint256 _value3
     ) public {
 
-        // Prevent array from growing beyond 10 elements
-        require(numbers.length + 3 <= 10, "Array limit reached");
-
         numbers.push(_value1);
         numbers.push(_value2);
         numbers.push(_value3);
@@ -402,105 +399,100 @@ IMPORTANT CONCEPTS LEARNED
 */
 /*
 Audit Report
+Title
 
-Title: Incorrect Array Length Validation in addMultipleValues()
+Unbounded Dynamic Array Growth
 
-Severity: Medium because the intended maximum array length of 10 can be exceeded, leading to unexpected storage
- growth and violation of business logic.
+Severity
 
-Location:
-Contract: DynamicArrayGrowth
+Low
+
+The issue does not directly enable theft of funds or privilege escalation. However, unrestricted storage growth can increase protocol costs and create future scalability and denial-of-service risks.
+
+Location
+
+Contract: DynamicArrayGrowthVul
 Function: addMultipleValues()
 
-Vulnerability Description:
-The addMultipleValues() function checks:
+Vulnerability Description
 
-require(numbers.length < 10, "Array limit reached");
+The addMultipleValues() function allows any user to continuously append new elements to the numbers array.
 
-However, the function pushes three values in a single transaction.
+Because no maximum length restriction exists, the array can grow indefinitely, resulting in permanent blockchain storage expansion.
 
-As a result, if the array length is already close to 10, the check passes but the final array size can exceed the
- intended limit.
+An attacker can repeatedly call the function and force the contract to consume increasing amounts of storage.
 
-Impact:
-A user can:
+Impact
 
-* exceed the maximum array length
-* bypass the intended storage restriction
-* increase storage usage beyond design expectations
-* create inconsistent contract behavior
+Unbounded storage growth may:
 
-If the array were later used for:
+Increase blockchain state size
+Increase long-term storage costs
+Reduce protocol scalability
+Create future gas-related issues
+Contribute to denial-of-service risks if loops are later introduced
 
-* participant tracking
-* voting systems
-* staking records
-* reward distributions
+Large arrays can become expensive or impossible to process in future contract upgrades.
 
-then exceeding the intended limit could cause logic errors or unexpected outcomes.
+Proof of Concept
+Step 1
 
-Proof of Concept:
+Deploy contract.
 
-1. Current array length:
+Step 2
 
-   9
+Call:
 
-2. User calls:
+addMultipleValues(1,2,3);
 
-   addMultipleValues(
-   10,
-   20,
-   30
-   )
+State:
 
-3. Validation executes:
+numbers = [1,2,3]
+length = 3
+Step 3
 
-   require(9 < 10);
+Call repeatedly:
 
-4. Check passes.
+addMultipleValues(4,5,6);
+addMultipleValues(7,8,9);
+addMultipleValues(10,11,12);
 
-5. Three values are pushed.
+State:
 
-6. Final array length becomes:
+numbers = [1,2,3,4,5,6,7,8,9,10,11,12]
+length = 12
+Step 4
 
-   12
+Continue calling the function.
 
-7. Maximum length restriction is bypassed.
+Result:
 
-Root Cause:
-The function validates only the current array length:
+Array grows without limit
+Storage consumption increases permanently
+Root Cause
 
-require(numbers.length < 10);
+The function performs multiple push() operations without checking array size.
 
-without considering that three new elements will be added.
+numbers.push(_value1);
+numbers.push(_value2);
+numbers.push(_value3);
 
-Recommendation:
-Validate the future array length before pushing values.
+No maximum length validation exists.
+
+Recommendation
+
+Implement a maximum array size restriction before appending new values.
 
 Example:
 
 require(
-numbers.length + 3 <= 10,
-"Array limit reached"
+    numbers.length + 3 <= 10,
+    "Maximum array length reached"
 );
 
-Status: Fixed
-
-Fix Implemented:
-
-require(
-numbers.length + 3 <= 10,
-"Array limit reached"
-);
-
-Result:
-
-* Array length can never exceed 10.
-* Excessive storage growth is prevented.
-* Business logic is enforced correctly.
-* Storage usage remains bounded.
-* The intended array size restriction works as expected.
+This ensures the array cannot exceed the intended limit.
 */
+
 // Patched code
 contract DynamicArrayGrowth {
 
@@ -512,7 +504,10 @@ contract DynamicArrayGrowth {
         uint256 _value3
     ) public {
 
-        require(numbers.length < 10, "Array limit reached");
+        require(
+            numbers.length + 3 <= 10,
+            "Maximum array length reached"
+        );
 
         numbers.push(_value1);
         numbers.push(_value2);
