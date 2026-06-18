@@ -6,6 +6,11 @@
 	"output": {
 		"abi": [
 			{
+				"inputs": [],
+				"stateMutability": "nonpayable",
+				"type": "constructor"
+			},
+			{
 				"anonymous": false,
 				"inputs": [
 					{
@@ -55,6 +60,19 @@
 				"name": "increment",
 				"outputs": [],
 				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "owner",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
 				"type": "function"
 			},
 			{
@@ -112,11 +130,11 @@
 	},
 	"sources": {
 		"prac12.sol": {
-			"keccak256": "0xbb570089f2d57f84b2ec33d1225590c3c3cd643daf0042e4c55960af5dcacd3f",
+			"keccak256": "0xc2c3d6521e03891354d92eba3fb5394b0247197f6789b049156cc2895e0f7dcf",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://a453be6b20cfa6a2add819b9e872da11ffb49f5edd4cd3d2cf19ed5b14c3617f",
-				"dweb:/ipfs/QmSEe7r4dUHV4vwjfctu3FFEW5jDj5GeGkci62pSuvPCaP"
+				"bzz-raw://4a2af8e3c3b25566621d78e58f1b8e357c06626f4c911a12af8ef7395f013f8c",
+				"dweb:/ipfs/QmPa89ZvYgRfgSTbQdm3fd8b3vv7XKxSwb94XZ5tQxmtKW"
 			]
 		}
 	},

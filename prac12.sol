@@ -69,61 +69,17 @@ Auditors inspect:
 */
 contract StatePersistenceVul {
 
-    address public owner;
-
     uint256 public counter;
-    uint256 public previousCounter;
 
-    event CounterUpdated(
-        uint256 oldValue,
-        uint256 newValue
-    );
-
-    constructor() {
-        owner = msg.sender;
-    }
-
-    modifier onlyOwner() {
-        require(
-            msg.sender == owner,
-            "Only owner can modify counter"
-        );
-        _;
-    }
-
-    function increment()
-        public
-        onlyOwner
-    {
-        previousCounter = counter;
-
+    function increment() public {
         counter = counter + 1;
-
-        emit CounterUpdated(
-            previousCounter,
-            counter
-        );
     }
 
-    function setCounter(uint256 _value)
-        public
-        onlyOwner
-    {
-        previousCounter = counter;
-
+    function setCounter(uint256 _value) public {
         counter = _value;
-
-        emit CounterUpdated(
-            previousCounter,
-            counter
-        );
     }
 
-    function getCounter()
-        public
-        view
-        returns (uint256)
-    {
+    function getCounter() public view returns (uint256) {
         return counter;
     }
 }
@@ -424,126 +380,198 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+//transaction cost
+// depends on deployment and execution
+//execution cost
+// depends on function called
+
 /*
 Audit Report
 
-Title: Loss of Previous State Due to Overwrite
+Title: Missing Access Control in Counter State Updates
 
-Severity: Low
-
-Status: Fixed
+Severity: Medium because unauthorized users can modify
+persistent contract state.
 
 Location:
-Contract: StatePersistence
-Functions: increment(), setCounter()
+Contract: StatePersistenceVul
+Functions:
+- increment()
+- setCounter(uint256)
 
 Vulnerability Description:
 
-In the vulnerable version, the counter state variable was
-updated directly whenever increment() or setCounter()
-was called.
+The increment() and setCounter() functions are publicly
+accessible and lack any authorization mechanism.
 
-As a result, the previous value was permanently lost and
-could not be retrieved from contract storage.
+As a result, any external account can modify the counter
+storage variable.
 
-This reduced auditability and made it difficult to track
-historical state transitions.
+Since storage changes are persistent on the blockchain,
+malicious or unintended updates can permanently alter
+contract state.
 
 Impact:
 
-Loss of previous state values could:
+An attacker can arbitrarily change the counter value.
 
-* Reduce transparency
-* Make debugging difficult
-* Limit auditability
-* Prevent recovery of historical information
+If this variable were used for critical protocol logic such as:
 
-If the variable represented critical protocol data,
-important state history could be lost.
+- reward calculations
+- governance thresholds
+- treasury parameters
+- staking multipliers
+- protocol configuration
+
+unauthorized users could manipulate protocol behavior.
 
 Proof of Concept:
 
-Vulnerable Version:
-
 1. Deploy contract
 
-2. Call:
-   setCounter(10)
+2. User A calls:
+   setCounter(100)
 
-   State:
-   counter = 10
+   Result:
+   counter = 100
 
-3. Call:
-   setCounter(50)
+3. Attacker calls:
+   setCounter(999999)
 
-   State:
-   counter = 50
+   Result:
+   counter = 999999
 
-4. Observe:
-   Previous value (10) is no longer stored.
+4. Attacker calls:
+   increment()
+
+   Result:
+   counter = 1000000
+
+5. State changes successfully despite attacker
+   having no special privileges.
 
 Root Cause:
 
-The previous implementation directly overwrote storage:
+The functions are declared public without any access control.
 
-counter = _value;
+No require() statement verifies that the caller is an
+authorized administrator before modifying storage.
 
-without preserving the existing value.
+Vulnerable Code:
 
-Remediation:
+function increment() public {
+    counter = counter + 1;
+}
 
-The contract now stores the previous value before every
-state update:
+function setCounter(uint256 _value) public {
+    counter = _value;
+}
 
-previousCounter = counter;
+Recommendation:
 
-counter = _value;
+Restrict state-modifying functions to authorized users.
 
-Additionally, an event is emitted:
+Implement ownership-based access control.
 
-emit CounterUpdated(previousCounter, counter);
+Example:
 
-This provides:
+address public owner;
 
-* State history preservation
-* Better auditability
-* Easier debugging
-* On-chain tracking of state transitions
+modifier onlyOwner() {
+    require(msg.sender == owner, "Not owner");
+    _;
+}
+
+function increment() public onlyOwner {
+    ...
+}
+
+function setCounter(uint256 _value)
+    public
+    onlyOwner
+{
+    ...
+}
+
+Additionally:
+
+- Track previous state before updates
+- Emit events for state transitions
+- Audit all critical storage modifications
+
+Patched Status:
+
+RESOLVED
+
+The patched contract:
+
+- introduces owner-based authorization
+- restricts state changes using onlyOwner
+- stores previousCounter before updates
+- emits CounterUpdated events for transparency
+
+Residual Risk:
+
+Low
+
+The unauthorized state modification vulnerability
+has been mitigated through proper access control.
 */
 //Patched Code
 contract StatePersistence {
 
     uint256 public counter;
     uint256 public previousCounter;
+    address public owner;
 
-    // Event to track state changes
     event CounterUpdated(
         uint256 oldValue,
         uint256 newValue
     );
 
-    function increment() public {
+    constructor() {
+        owner = msg.sender;
+    }
 
-        // Save old value before update
+    modifier onlyOwner() {
+        require(
+            msg.sender == owner,
+            "Not owner"
+        );
+        _;
+    }
+
+    function increment() public onlyOwner {
+
         previousCounter = counter;
 
         counter = counter + 1;
 
-        emit CounterUpdated(previousCounter, counter);
+        emit CounterUpdated(
+            previousCounter,
+            counter
+        );
     }
 
-    function setCounter(uint256 _value) public {
-
-        // Save old value before update
+    function setCounter(uint256 _value)
+        public
+        onlyOwner
+    {
         previousCounter = counter;
 
         counter = _value;
 
-        emit CounterUpdated(previousCounter, counter);
+        emit CounterUpdated(
+            previousCounter,
+            counter
+        );
     }
 
-    function getCounter() public view returns (uint256) {
-
+    function getCounter()
+        public
+        view
+        returns (uint256)
+    {
         return counter;
     }
 }
