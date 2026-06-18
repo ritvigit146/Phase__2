@@ -83,13 +83,6 @@ contract UserStorageVul {
     mapping(address => uint256) public balances;
 
     function storeValue(uint256 _amount) public {
-        
-        // Only allow increasing value
-        require(
-            _amount > balances[msg.sender],
-            "Only increase allowed"
-        );
-
         balances[msg.sender] = _amount;
     }
 
@@ -371,86 +364,82 @@ IMPORTANT CONCEPTS LEARNED
 */
 /*
 Audit Report
+Title
 
-Title: Unrestricted Balance Overwrite in storeValue()
+Unrestricted Decrease of User Mapping Values
 
-Severity: Low because users can manipulate their own stored values,
-but cannot directly modify another user's mapping entry.
+Severity
 
-Location:
+Low
+
+Location
+
 Contract: UserStorageVul
 Function: storeValue()
 
-Vulnerability Description:
-The storeValue() function allows users to overwrite their stored
-balance with any value. There is no validation preventing a user
-from decreasing or resetting their balance.
+Vulnerability Description
 
-Impact:
-A user can:
+The storeValue() function allows users to overwrite their previously stored value with any new value, including a smaller value.
 
-- reduce their stored value
-- reset balance to zero
-- arbitrarily modify stored state
+While users cannot modify another user's data due to the use of msg.sender, the contract does not enforce monotonic growth of stored values.
 
-If the mapping represented:
+If the intended business logic requires values to only increase, the current implementation fails to enforce this requirement.
 
-- staking balances
-- rewards
-- voting power
-- protocol accounting
+Impact
 
-then unrestricted updates could lead to incorrect system behavior.
+Users can decrease their stored values at any time.
 
-Proof of Concept:
+This may:
 
-1. User calls:
-   storeValue(100)
+violate business logic assumptions
+invalidate growth-only tracking systems
+cause incorrect accounting
+affect reward, staking, or reputation mechanisms that depend on increasing values
 
-2. Balance becomes:
-   balances[user] = 100
+For example:
 
-3. User calls:
-   storeValue(50)
+storeValue(1000);
+storeValue(100);
 
-4. Balance becomes:
-   balances[user] = 50
+The stored value decreases from 1000 to 100.
 
-5. Previous value is overwritten successfully.
+Proof of Concept
+Deploy contract.
+User calls:
+storeValue(500);
 
-Root Cause:
-The function directly assigns:
+State:
 
-balances[msg.sender] = _amount;
+balances[msg.sender] = 500;
+User calls:
+storeValue(100);
+Transaction succeeds.
+State becomes:
+balances[msg.sender] = 100;
 
-without validating whether the new value is greater than the
-existing value.
+The previous value was decreased successfully.
 
-Recommendation:
-Restrict updates so that values can only increase.
+Root Cause
+
+The function directly overwrites the user's mapping value without validating the new amount.
+
+function storeValue(uint256 _amount) public {
+    balances[msg.sender] = _amount;
+}
+
+No check ensures that the new value is greater than the existing value.
+
+Recommendation
+
+Validate that the new value is greater than the user's current value before updating storage.
 
 Example:
 
 require(
     _amount > balances[msg.sender],
-    "Only increase allowed"
+    "Value must increase"
 );
 
-Status: Fixed
-
-Fix Implemented:
-
-require(
-    _amount > balances[msg.sender],
-    "Only increase allowed"
-);
-
-Result:
-
-- Users can increase their stored value.
-- Decreasing value fails.
-- Existing value cannot be reduced or reset.
-- Mapping integrity is improved.
 */
 //Patched code
 contract UserStorage {
@@ -458,9 +447,10 @@ contract UserStorage {
     mapping(address => uint256) public balances;
 
     function storeValue(uint256 _amount) public {
-        
-        // Only allow increasing value
-        require(_amount > balances[msg.sender], "Only increase allowed");
+        require(
+            _amount > balances[msg.sender],
+            "Value must increase"
+        );
 
         balances[msg.sender] = _amount;
     }
