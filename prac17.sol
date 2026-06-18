@@ -73,8 +73,7 @@ Auditors inspect:
 
 =========================================================
 */
-
-contract MemoryLifecycle {
+contract MemoryLifecycleVul {
 
     string public storedName = "Blockchain";
 
@@ -83,42 +82,27 @@ contract MemoryLifecycle {
         pure
         returns (uint256)
     {
-
-        /*
-            MEMORY-LIKE TEMPORARY VARIABLE
-
-            localValue exists only during execution.
-        */
         uint256 localValue = 100;
 
-        /*
-            Returning temporary variable.
-
-            After function finishes:
-            localValue disappears.
-        */
         return localValue;
     }
 
-    function returnMemoryString()
+    function returnMemoryString(
+        uint256 size
+    )
         public
         pure
-        returns (string memory)
+        returns (uint256[] memory)
     {
+        // Vulnerability:
+        // User controls memory allocation size.
+        uint256[] memory hugeArray = new uint256[](size);
 
-        /*
-            MEMORY STRING
+        for (uint256 i = 0; i < size; i++) {
+            hugeArray[i] = i;
+        }
 
-            Strings are dynamic types.
-
-            Solidity requires explicit memory keyword.
-        */
-        string memory tempName = "Solidity";
-
-        /*
-            tempName returned from memory.
-        */
-        return tempName;
+        return hugeArray;
     }
 
     function copyStorageToMemory()
@@ -126,20 +110,8 @@ contract MemoryLifecycle {
         view
         returns (string memory)
     {
-
-        /*
-            STORAGE -> MEMORY COPY
-
-            storedName lives in storage.
-
-            localCopy becomes temporary memory copy.
-        */
         string memory localCopy = storedName;
 
-        /*
-            Changes to localCopy would NOT
-            affect storedName.
-        */
         return localCopy;
     }
 }
@@ -426,3 +398,126 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+/*
+Audit Report
+
+Title: Unbounded Memory Allocation in returnMemoryString()
+
+Severity: Low because the vulnerability can cause excessive gas
+consumption and transaction failures but does not directly lead
+to fund loss or unauthorized state modification.
+
+Location:
+Contract: MemoryLifecycleVul
+Function: returnMemoryString()
+
+Vulnerability Description:
+
+The returnMemoryString() function allows users to specify any
+array size through the size parameter.
+
+The function allocates memory directly using:
+
+uint256[] memory hugeArray = new uint256[](size);
+
+Because no upper limit exists, an attacker can request an
+extremely large array, forcing excessive memory expansion
+inside the EVM.
+
+Impact:
+
+- Excessive gas consumption
+- Transaction failures
+- Resource exhaustion
+- Potential Denial-of-Service (DoS) conditions
+- Increased execution costs for callers
+
+Proof of Concept:
+
+1. Deploy contract
+
+2. Attacker calls:
+
+   returnMemoryString(1000000)
+
+3. Contract attempts to allocate a massive array
+
+4. Gas usage increases dramatically
+
+5. Transaction may revert due to out-of-gas conditions
+
+Root Cause:
+
+The function performs memory allocation using a
+user-controlled parameter without validation.
+
+No require() statement restricts the maximum
+size of the allocated array.
+
+Recommendation:
+
+Restrict memory allocation by enforcing a maximum
+array size before creating the array.
+
+Example:
+
+uint256 public constant MAX_ARRAY_SIZE = 100;
+
+require(
+    size <= MAX_ARRAY_SIZE,
+    "Array too large"
+);
+
+This ensures predictable gas consumption and
+prevents excessive memory allocation attacks.
+
+*/
+//Patched code
+contract MemoryLifecycle {
+
+    string public storedName = "Blockchain";
+
+    uint256 public constant MAX_ARRAY_SIZE = 100;
+
+    function createMemoryVariable()
+        public
+        pure
+        returns (uint256)
+    {
+        uint256 localValue = 100;
+
+        return localValue;
+    }
+
+    function createMemoryArray(
+        uint256 size
+    )
+        public
+        pure
+        returns (uint256[] memory)
+    {
+        require(
+            size <= MAX_ARRAY_SIZE,
+            "Array too large"
+        );
+
+        uint256[] memory tempArray =
+            new uint256[](size);
+
+        for (uint256 i = 0; i < size; i++) {
+            tempArray[i] = i + 1;
+        }
+
+        return tempArray;
+    }
+
+    function copyStorageToMemory()
+        public
+        view
+        returns (string memory)
+    {
+        string memory localCopy = storedName;
+
+        return localCopy;
+    }
+}
