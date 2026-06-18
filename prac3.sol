@@ -53,18 +53,11 @@ Auditors check:
 
 =========================================================
 */
-
-contract StoreAddressVul{
+contract StoreAddressVul {
 
     address public userAddress;
-    address public owner;
-
-    constructor() {
-        owner = msg.sender;
-    }
 
     function storeAddress(address _newAddress) public {
-        require(msg.sender == owner, "Only owner");
         userAddress = _newAddress;
     }
 
@@ -287,76 +280,114 @@ IMPORTANT CONCEPTS LEARNED
 /*
 Audit Report
 
-Title: Missing Zero Address Validation in storeAddress()
+Finding 1
+Title: Missing Access Control in storeAddress()
 
-Severity: Medium because an invalid address can be stored, potentially causing loss of functionality or funds.
+Severity: Medium because unauthorized users can change contract state, but the severity depends on what the address is used for
 
-Location:
+Location
+
 Contract: StoreAddressVul
 Function: storeAddress()
 
-Vulnerability Description:
-The storeAddress() function allows the owner to store the zero address
-(0x0000000000000000000000000000000000000000) because no validation
-is performed on the input address.
+Vulnerability Description: The storeAddress() function can be called by any user because no authorization checks are 
+implemented.As a result, an attacker can replace the stored address with an arbitrary address under their control.
 
-Impact:
-If the stored address represents a critical wallet such as:
-- owner wallet
-- treasury wallet
-- reward wallet
-- signer address
+Impact
 
-then setting it to the zero address can:
-- break contract functionality
-- make funds inaccessible
-- permanently disable administrative actions
+If the stored address represents:
 
-Proof of Concept:
+treasury wallet
+owner address
+signer wallet
+reward distributor
 
-1. Deploy contract
-2. Owner calls:
-   storeAddress(0x0000000000000000000000000000000000000000)
-3. Transaction succeeds
-4. userAddress becomes the zero address
+an attacker may redirect protocol operations or future fund transfers.
 
-Root Cause:
-The function does not validate the input address before storing it.
-No require() statement prevents address(0) from being assigned.
+Proof of Concept
+Deploy contract
+Legitimate user stores address:
+storeAddress(0x1111111111111111111111111111111111111111);
+Attacker calls:
+storeAddress(0x2222222222222222222222222222222222222222);
+State changes successfully:
+userAddress =
+0x2222222222222222222222222222222222222222
+Root Cause
 
-Recommendation:
-Validate the address before updating storage.
+No access control exists.
 
-Example:
+function storeAddress(address _newAddress) public {
+    userAddress = _newAddress;
+}
+Recommendation
 
-require(_newAddress != address(0), "Zero address not allowed");
+Restrict updates to the contract owner.
 
-Status: Fixed
+require(msg.sender == owner, "Only owner can update");
+Finding 2
+Title
 
-Fix Implemented:
-- Added owner-only access control:
-  require(msg.sender == owner, "Only owner can update");
+Missing Zero Address Validation in storeAddress()
 
-- Added zero address validation:
-  require(_newAddress != address(0), "Zero address not allowed");
+Severity
 
-Result:
-Only the contract owner can update the stored address, and invalid
-zero addresses can no longer be stored.
+Low
+
+Location
+
+Contract: StoreAddressVul
+Function: storeAddress()
+
+Vulnerability Description
+
+The function allows storing the zero address (address(0)) because no validation is performed on the input.
+
+Impact
+
+If the stored address represents a critical protocol address, assigning the zero address may:
+
+break protocol functionality
+disable administrative operations
+make funds inaccessible
+prevent future interactions
+Proof of Concept
+Deploy contract
+Call:
+storeAddress(
+    0x0000000000000000000000000000000000000000
+);
+Transaction succeeds.
+State becomes:
+userAddress =
+0x0000000000000000000000000000000000000000
+Root Cause
+
+No validation is performed before updating storage.
+
+userAddress = _newAddress;
+Recommendation
+
+Reject zero addresses before storing them.
+
+require(
+    _newAddress != address(0),
+    "Zero address not allowed"
+);
 */
 
 // Patched code
 contract StoreAddress {
 
-    address public owner;
     address public userAddress;
+    address public owner;
 
     constructor() {
         owner = msg.sender;
     }
 
     function storeAddress(address _newAddress) public {
-        require(msg.sender == owner, "Only owner can update");
+        require(msg.sender == owner, "Only owner can update address");
         require(_newAddress != address(0), "Zero address not allowed");
 
         userAddress = _newAddress;
