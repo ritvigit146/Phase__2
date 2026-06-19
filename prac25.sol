@@ -75,7 +75,7 @@ Auditors inspect:
 
 =========================================================
 */
-contract LargeMemoryArray {
+contract LargeMemoryArrayVul {
 
     uint256[] public storedValues;
 

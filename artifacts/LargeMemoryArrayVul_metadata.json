@@ -6,45 +6,6 @@
 	"output": {
 		"abi": [
 			{
-				"inputs": [],
-				"name": "MAX_ARRAY_SIZE",
-				"outputs": [
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"inputs": [],
-				"name": "MAX_BATCH",
-				"outputs": [
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"inputs": [],
-				"name": "MAX_PAGE_SIZE",
-				"outputs": [
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
 				"inputs": [
 					{
 						"internalType": "uint256",
@@ -58,19 +19,8 @@
 				"type": "function"
 			},
 			{
-				"inputs": [
-					{
-						"internalType": "uint256",
-						"name": "start",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "limit",
-						"type": "uint256"
-					}
-				],
-				"name": "getValues",
+				"inputs": [],
+				"name": "copyStorageToMemory",
 				"outputs": [
 					{
 						"internalType": "uint256[]",
@@ -133,7 +83,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"prac25.sol": "LargeMemoryArrayPatched"
+			"prac25.sol": "LargeMemoryArrayVul"
 		},
 		"evmVersion": "osaka",
 		"libraries": {},
