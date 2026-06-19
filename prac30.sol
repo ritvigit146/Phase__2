@@ -427,8 +427,124 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+/*
+Audit Report
+
+Title: Unbounded Array Processing and Missing Empty Array Validation
+
+Severity: Low because attackers can trigger unnecessary transaction failures
+and excessive gas consumption, but cannot steal funds or gain privileges.
+
+Location:
+Contract: CalldataVsMemoryVulnerable
+
+Functions:
+- modifyMemory()
+- saveValues()
+
+Vulnerability Description:
+
+The contract accepts user-controlled dynamic arrays without validating
+their size.
+
+In modifyMemory(), the function directly accesses tempArray[0]
+without verifying that the array contains at least one element.
+
+If an empty array is supplied, the transaction reverts due to an
+out-of-bounds array access.
+
+Additionally, saveValues() processes an unbounded user-supplied array
+inside a loop and writes every element to storage.
+
+A malicious user can provide an extremely large array, causing excessive
+gas consumption and potential transaction failure.
+
+Impact:
+
+1. Empty Array Revert
+
+Users can cause modifyMemory() to revert by supplying an empty array.
+
+2. Excessive Gas Consumption
+
+Attackers can submit very large arrays causing:
+
+- expensive execution
+- transaction failure
+- reduced scalability
+- denial of service for large operations
+
+Proof of Concept:
+
+1. Deploy contract
+
+2. Call:
+
+    modifyMemory([])
+
+3. Function attempts:
+
+    tempArray[0] = 999;
+
+4. Transaction reverts due to
+   array out-of-bounds access.
+
+------------------------------------------------
+
+1. Deploy contract
+
+2. Call:
+
+    saveValues([1,2,3,... thousands of values])
+
+3. Loop executes for every element
+
+4. Gas consumption increases significantly
+
+5. Transaction may fail because of gas limits
+
+Root Cause:
+
+1. modifyMemory()
+
+The function assumes that the array contains at least one element.
+
+No validation exists before accessing:
+
+    tempArray[0]
+
+2. saveValues()
+
+The function performs an unbounded loop over
+attacker-controlled input.
+
+No limit exists on:
+
+    _numbers.length
+
+Recommendation:
+
+Validate that the array is not empty before
+modifying its first element.
+
+Example:
+
+    require(_numbers.length > 0, "Empty array");
+
+Restrict maximum array size to prevent excessive
+gas consumption.
+
+Example:
+
+    require(
+        _numbers.length <= 100,
+        "Array too large"
+    );
+
+*/
+
 //Patched code
-contract CalldataVsMemoryPatched {
+contract CalldataVsMemory{
 
     uint256[] public storedValues;
 

@@ -1,0 +1,135 @@
+{
+	"compiler": {
+		"version": "0.8.34+commit.80d5c536"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "uint256[]",
+						"name": "_numbers",
+						"type": "uint256[]"
+					}
+				],
+				"name": "modifyMemory",
+				"outputs": [
+					{
+						"internalType": "uint256[]",
+						"name": "",
+						"type": "uint256[]"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256[]",
+						"name": "_numbers",
+						"type": "uint256[]"
+					}
+				],
+				"name": "saveValues",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"name": "storedValues",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256[]",
+						"name": "_numbers",
+						"type": "uint256[]"
+					}
+				],
+				"name": "useCalldata",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256[]",
+						"name": "_numbers",
+						"type": "uint256[]"
+					}
+				],
+				"name": "useMemory",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"prac30.sol": "CalldataVsMemoryVulnerable"
+		},
+		"evmVersion": "osaka",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"prac30.sol": {
+			"keccak256": "0xa2bf9ec0e7856db8be13754661037216342ea60d19394e7c4db1de0bedc0478a",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://fef0bb8153aac761a537bcdd8626b905917e064464969aca3476115d123c8904",
+				"dweb:/ipfs/QmWS4RxV8SpSUY3CrtHkRzy745PR1RSXdkvtiTVzL8Fu5E"
+			]
+		}
+	},
+	"version": 1
+}
