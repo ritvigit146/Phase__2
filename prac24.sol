@@ -75,33 +75,18 @@ Auditors inspect:
 
 =========================================================
 */
+contract MemoryStringExampleVul {
 
-contract MemoryStringExample {
-
-    /*
-        STORAGE STRING
-
-        Stored permanently on blockchain.
-    */
     string public storedName;
 
-    function saveName(string memory _name) public {
+    function saveName(
+        string memory _name
+    )
+        public
+    {
+        // VULNERABLE
+        // No length validation
 
-        /*
-            _name exists temporarily in memory.
-
-            During execution:
-            _name can be modified.
-
-            After execution:
-            memory cleared.
-        */
-
-        /*
-            STORAGE WRITE
-
-            Copies memory string into storage.
-        */
         storedName = _name;
     }
 
@@ -112,17 +97,8 @@ contract MemoryStringExample {
         pure
         returns (string memory)
     {
-
-        /*
-            MEMORY STRING VARIABLE
-
-            Temporary dynamic string.
-        */
         string memory message = _name;
 
-        /*
-            Returning temporary memory string.
-        */
         return message;
     }
 
@@ -137,12 +113,6 @@ contract MemoryStringExample {
             string memory
         )
     {
-
-        /*
-            Both strings exist only temporarily
-            during execution.
-        */
-
         return (_first, _second);
     }
 }
@@ -426,3 +396,202 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+/*
+Audit Report
+
+Title: Unbounded String Input May Cause Excessive Gas Consumption
+
+Severity: Low because an attacker can submit extremely large strings causing
+excessive gas consumption, storage bloat, and transaction failures, but cannot
+directly steal funds or gain privileges.
+
+Location:
+Contract: MemoryStringExampleVul
+
+Function:
+- saveName(string memory _name)
+- getWelcomeMessage(string memory _name)
+- compareStrings(string memory _first, string memory _second)
+
+Vulnerability Description:
+
+The contract accepts user-controlled dynamic string inputs without enforcing
+any maximum length restriction.
+
+Since strings are dynamic data types, large inputs require:
+
+- additional memory allocation
+- larger calldata decoding
+
+An attacker can submit extremely large strings that significantly increase
+gas consumption and may cause out-of-gas failures.
+
+Impact:
+
+An attacker can intentionally provide oversized string inputs resulting in:
+
+- excessive memory allocation
+- transaction failures
+- reduced protocol scalability
+
+If integrated into a production system that processes user-generated metadata,
+NFT names, profile data, or protocol configuration values, unrestricted string
+growth may negatively impact usability and operational costs.
+
+Proof of Concept:
+
+1. Deploy contract
+
+2. Call:
+
+    saveName(
+        "AAAAAAAAAAAAAAAA..."
+    );
+
+with a very large string.
+
+3. Observe:
+
+- high gas consumption
+- expensive storage write
+
+4. Call:
+
+    getWelcomeMessage(
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA..."
+    );
+
+5. Observe:
+
+- increased memory allocation
+- increased ABI encoding cost
+
+Root Cause:
+
+The contract performs no validation on the length of user-supplied strings.
+
+Example:
+
+    function saveName(
+        string memory _name
+    )
+        public
+    {
+        storedName = _name;
+    }
+
+No checks exist to restrict:
+
+- maximum string length
+- memory allocation size
+- storage growth
+
+Recommendation:
+
+Enforce a maximum string length before processing input.
+
+Example:
+
+    uint256 public constant MAX_NAME_LENGTH = 100;
+
+    require(
+        bytes(_name).length <= MAX_NAME_LENGTH,
+        "Name too long"
+    );
+
+Additionally, use calldata instead of memory for external inputs to avoid
+unnecessary copying and improve gas efficiency.
+
+Example:
+
+    function saveName(
+        string calldata _name
+    )
+        external
+
+Patched Version Validation:
+
+The patched contract mitigates the issue by:
+
+- introducing MAX_NAME_LENGTH
+- validating input length
+- rejecting oversized strings
+- replacing memory parameters with calldata
+- reducing unnecessary memory copies
+
+Example:
+
+    require(
+        bytes(_name).length <= MAX_NAME_LENGTH,
+        "Name too long"
+    );
+
+Result:
+
+The risk of excessive memory allocation, storage bloat, and gas exhaustion
+caused by unbounded string inputs is significantly reduced.
+*/
+
+//Patched code
+contract MemoryStringExamplePatched {
+
+    string public storedName;
+
+    uint256 public constant MAX_NAME_LENGTH = 100;
+
+    function saveName(
+        string calldata _name
+    )
+        external
+    {
+        require(
+            bytes(_name).length <=
+            MAX_NAME_LENGTH,
+            "Name too long"
+        );
+
+        storedName = _name;
+    }
+
+    function getWelcomeMessage(
+        string calldata _name
+    )
+        external
+        pure
+        returns (string memory)
+    {
+        require(
+            bytes(_name).length <=
+            MAX_NAME_LENGTH,
+            "Name too long"
+        );
+
+        return _name;
+    }
+
+    function compareStrings(
+        string calldata _first,
+        string calldata _second
+    )
+        external
+        pure
+        returns (
+            string memory,
+            string memory
+        )
+    {
+        require(
+            bytes(_first).length <=
+            MAX_NAME_LENGTH,
+            "First string too long"
+        );
+
+        require(
+            bytes(_second).length <=
+            MAX_NAME_LENGTH,
+            "Second string too long"
+        );
+
+        return (_first, _second);
+    }
+}
