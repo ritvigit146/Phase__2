@@ -1,0 +1,129 @@
+{
+	"compiler": {
+		"version": "0.8.34+commit.80d5c536"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "uint256[][]",
+						"name": "_matrix",
+						"type": "uint256[][]"
+					}
+				],
+				"name": "calculateNestedSum",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256[][]",
+						"name": "_matrix",
+						"type": "uint256[][]"
+					}
+				],
+				"name": "getOuterLength",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256[][]",
+						"name": "_matrix",
+						"type": "uint256[][]"
+					}
+				],
+				"name": "processAndStore",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256[][]",
+						"name": "_matrix",
+						"type": "uint256[][]"
+					}
+				],
+				"name": "readNestedArray",
+				"outputs": [
+					{
+						"internalType": "uint256[][]",
+						"name": "",
+						"type": "uint256[][]"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "totalSum",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"prac34.sol": "NestedCalldataArray"
+		},
+		"evmVersion": "osaka",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"prac34.sol": {
+			"keccak256": "0x678033d14418c95d086c87fc64d565667a2af34eacf4134e3c23627797f54126",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://966fac9b720dbb787f5198f360be70d0176d99abfea643fd81dadd3acbca735c",
+				"dweb:/ipfs/QmVw6XpDMC2RpLVZP8vGrBR8TBbCJUP7fC3dap2pDTJgUR"
+			]
+		}
+	},
+	"version": 1
+}

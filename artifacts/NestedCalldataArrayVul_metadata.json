@@ -1,0 +1,91 @@
+{
+	"compiler": {
+		"version": "0.8.34+commit.80d5c536"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "uint256[][]",
+						"name": "_matrix",
+						"type": "uint256[][]"
+					}
+				],
+				"name": "calculateNestedSum",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256[][]",
+						"name": "_matrix",
+						"type": "uint256[][]"
+					}
+				],
+				"name": "processAndStore",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "totalSum",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"prac34.sol": "NestedCalldataArrayVul"
+		},
+		"evmVersion": "osaka",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"prac34.sol": {
+			"keccak256": "0x727acef26d01bc89a0eb5d9a8e95efb82137851e9e8c0e44f0a44ca6007a0dc6",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://61dafb730d1333c7344f57f6d77c8f8947975c9248208e7540b39dc0a1698d0e",
+				"dweb:/ipfs/QmSbat11coLDFzTAWds66qYUFDNhkAzDXXrnhjiTLiTk7h"
+			]
+		}
+	},
+	"version": 1
+}
