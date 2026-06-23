@@ -95,8 +95,7 @@ contract StateRollbackBehavior {
             State changes happen immediately
             during execution.
         */
-        totalCounter =
-            totalCounter + _value;
+        totalCounter = totalCounter + _value;
 
         userCounter[msg.sender] =
             userCounter[msg.sender] + _value;

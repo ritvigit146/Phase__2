@@ -407,7 +407,8 @@ Severity
 
 Low
 
-The issue does not directly enable theft of funds or privilege escalation. However, unrestricted storage growth can increase protocol costs and create future scalability and denial-of-service risks.
+The issue does not directly enable theft of funds or privilege escalation. However, unrestricted storage growth can increase protocol 
+costs and create future scalability and denial-of-service risks.
 
 Location
 

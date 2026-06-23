@@ -9,28 +9,31 @@
 				"inputs": [
 					{
 						"internalType": "uint256",
-						"name": "_value1",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "_value2",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "_value3",
+						"name": "_value",
 						"type": "uint256"
 					}
 				],
-				"name": "addMultipleValues",
+				"name": "riskyIncrement",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "_value",
+						"type": "uint256"
+					}
+				],
+				"name": "safeIncrement",
 				"outputs": [],
 				"stateMutability": "nonpayable",
 				"type": "function"
 			},
 			{
 				"inputs": [],
-				"name": "getLength",
+				"name": "totalCounter",
 				"outputs": [
 					{
 						"internalType": "uint256",
@@ -44,31 +47,12 @@
 			{
 				"inputs": [
 					{
-						"internalType": "uint256",
-						"name": "_index",
-						"type": "uint256"
-					}
-				],
-				"name": "getNumber",
-				"outputs": [
-					{
-						"internalType": "uint256",
+						"internalType": "address",
 						"name": "",
-						"type": "uint256"
+						"type": "address"
 					}
 				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"inputs": [
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					}
-				],
-				"name": "numbers",
+				"name": "userCounter",
 				"outputs": [
 					{
 						"internalType": "uint256",
@@ -93,7 +77,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"prac8.sol": "DynamicArrayGrowth"
+			"prac37.sol": "StateRollbackBehavior"
 		},
 		"evmVersion": "osaka",
 		"libraries": {},
@@ -107,12 +91,12 @@
 		"remappings": []
 	},
 	"sources": {
-		"prac8.sol": {
-			"keccak256": "0x49d9873e24ea89182e13596fa0cbaf9d6857b0b77cca803a9de7e6a4e36c0be0",
+		"prac37.sol": {
+			"keccak256": "0xbacb1c9610a0b02aa2b54ca7b2cdd52adb9402240f80d89b4b629a76d55e4bfb",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://56acc1c14fdb050f0fc380feb5f1305d38f802dc4ac6c680b35de0e9795a9add",
-				"dweb:/ipfs/QmNS9JfcNHktpWJwQsnmPQrDV81TMdtCoBzx9M4hF8kVVL"
+				"bzz-raw://b7f27b41925b4951e70c4d5c0044e90f8139bb8645bf2ffab584607367dcdfd5",
+				"dweb:/ipfs/QmRvwDJpRkua2PwwER3RLY4vncKbZrnQAxUQLfz9cn4Gx1"
 			]
 		}
 	},

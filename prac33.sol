@@ -77,98 +77,24 @@ Auditors inspect:
 
 =========================================================
 */
+contract ReturnCalldataValueVul {
 
-contract ReturnCalldataValue {
-
-    /*
-        STORAGE VARIABLE
-
-        Permanent blockchain state.
-    */
-    string public savedMessage;
-
-    /*
-    =====================================================
-    RETURN UINT FROM CALLDATA
-    =====================================================
-    */
-
-    function returnUint(
-        uint256 _number
-    )
-        external
-        pure
-        returns (uint256)
-    {
-
-        /*
-            _number arrives through calldata.
-
-            Function simply returns it.
-        */
-        return _number;
-    }
-
-    /*
-    =====================================================
-    RETURN STRING FROM CALLDATA
-    =====================================================
-    */
-
-    function returnMessage(
-        string calldata _message
-    )
-        external
-        pure
-        returns (string memory)
-    {
-
-        /*
-            _message exists in calldata.
-
-            Returned as memory value.
-        */
-        return _message;
-    }
-
-    /*
-    =====================================================
-    RETURN ARRAY FROM CALLDATA
-    =====================================================
-    */
-
-    function returnArray(
+    function reverseArray(
         uint256[] calldata _numbers
     )
         external
         pure
         returns (uint256[] memory)
     {
+        uint256[] memory reversed =
+            new uint256[](_numbers.length);
 
-        /*
-            Returning calldata-derived array.
+        for (uint256 i = 0; i < _numbers.length; i++) {
+            reversed[i] =
+                _numbers[_numbers.length - 1 - i];
+        }
 
-            Solidity ABI-encodes return data.
-        */
-        return _numbers;
-    }
-
-    /*
-    =====================================================
-    STORE CALLDATA VALUE
-    =====================================================
-    */
-
-    function saveMessage(
-        string calldata _message
-    )
-        external
-    {
-
-        /*
-            Copy calldata into storage.
-        */
-        savedMessage = _message;
+        return reversed;
     }
 }
 
@@ -480,3 +406,31 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+//Patched code
+contract ReturnCalldataValuePatched {
+
+    uint256 public constant MAX_LENGTH = 100;
+
+    function reverseArray(
+        uint256[] calldata _numbers
+    )
+        external
+        pure
+        returns (uint256[] memory)
+    {
+        require(
+            _numbers.length <= MAX_LENGTH,
+            "Array too large"
+        );
+
+        uint256[] memory reversed =
+            new uint256[](_numbers.length);
+
+        for (uint256 i = 0; i < _numbers.length; i++) {
+            reversed[i] =
+                _numbers[_numbers.length - 1 - i];
+        }
+
+        return reversed;
+    }
+}
