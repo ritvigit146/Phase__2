@@ -1,0 +1,65 @@
+{
+	"compiler": {
+		"version": "0.8.34+commit.80d5c536"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "uint256[][]",
+						"name": "_numbers",
+						"type": "uint256[][]"
+					}
+				],
+				"name": "processNestedArray",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"prac35.sol": "ValidateNestedArrayVul"
+		},
+		"evmVersion": "osaka",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"prac35.sol": {
+			"keccak256": "0xc1ea8a3be66ae06fe70a0ecc0339708f20954899edbef274c839044c21d3b90b",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://bd94e0a151fa5b4c89ff8cff954bb8838cde255f01caa1b7e8e2dddcbcfd683e",
+				"dweb:/ipfs/QmNLfRXmza1eQLt1bziYMyXX7NsBZYvZUZZDLeSFbhXP5X"
+			]
+		}
+	},
+	"version": 1
+}

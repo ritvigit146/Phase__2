@@ -73,160 +73,26 @@ Auditors inspect:
 
 =========================================================
 */
+contract ValidateNestedArrayVul {
 
-contract ValidateCalldataInput {
-
-    /*
-        STATE VARIABLES
-
-        Permanent blockchain state.
-    */
-    uint256 public storedAmount;
-
-    address public lastReceiver;
-
-    /*
-    =====================================================
-    VALIDATE UINT INPUT
-    =====================================================
-    */
-
-    function deposit(
-        uint256 _amount
-    )
-        external
-    {
-
-        /*
-            VALIDATION:
-            Amount must be greater than zero.
-        */
-        require(
-            _amount > 0,
-            "Amount must be > 0"
-        );
-
-        /*
-            VALIDATION:
-            Prevent excessively large deposits.
-        */
-        require(
-            _amount <= 1000 ether,
-            "Amount too large"
-        );
-
-        /*
-            Store validated value.
-        */
-        storedAmount = _amount;
-    }
-
-    /*
-    =====================================================
-    VALIDATE ADDRESS INPUT
-    =====================================================
-    */
-
-    function setReceiver(
-        address _receiver
-    )
-        external
-    {
-
-        /*
-            VALIDATION:
-            Prevent zero address.
-        */
-        require(
-            _receiver != address(0),
-            "Invalid address"
-        );
-
-        lastReceiver = _receiver;
-    }
-
-    /*
-    =====================================================
-    VALIDATE ARRAY INPUT
-    =====================================================
-    */
-
-    function processArray(
-        uint256[] calldata _numbers
+    function processNestedArray(
+        uint256[][] calldata _numbers
     )
         external
         pure
         returns (uint256)
     {
-
-        /*
-            VALIDATION:
-            Prevent huge arrays.
-        */
-        require(
-            _numbers.length <= 100,
-            "Array too large"
-        );
-
-        uint256 total = 0;
+        uint256 total;
 
         for (uint256 i = 0; i < _numbers.length; i++) {
 
-            /*
-                VALIDATION:
-                Reject zero values.
-            */
-            require(
-                _numbers[i] > 0,
-                "Invalid number"
-            );
+            for (uint256 j = 0; j < _numbers[i].length; j++) {
 
-            total += _numbers[i];
+                total += _numbers[i][j];
+            }
         }
 
         return total;
-    }
-
-    /*
-    =====================================================
-    VALIDATE STRING INPUT
-    =====================================================
-    */
-
-    function validateMessage(
-        string calldata _message
-    )
-        external
-        pure
-        returns (bool)
-    {
-
-        /*
-            Convert string to bytes
-            to check length.
-        */
-        bytes calldata messageBytes =
-            bytes(_message);
-
-        /*
-            VALIDATION:
-            Reject empty strings.
-        */
-        require(
-            messageBytes.length > 0,
-            "Empty message"
-        );
-
-        /*
-            VALIDATION:
-            Prevent excessively large input.
-        */
-        require(
-            messageBytes.length <= 50,
-            "Message too long"
-        );
-
-        return true;
     }
 }
 
@@ -555,119 +421,177 @@ IMPORTANT CONCEPTS LEARNED
 /*
 Audit Report
 
-Title: No Security Vulnerabilities Identified
+Title: Missing Validation for Nested Calldata Arrays
 
-Severity: Informational
+Severity: Medium because attackers can submit oversized
+nested arrays or duplicate values, leading to excessive gas
+consumption and violation of business rules.
 
-Location: Contract: ValidateCalldataInput
+Location:
+Contract: ValidateNestedArrayVul
+Function: processNestedArray()
 
-Summary:
+Vulnerability Description:
 
-The contract demonstrates proper calldata input validation techniques and does not contain any obvious security vulnerabilities within the provided scope.
+The processNestedArray() function accepts a nested calldata
+array but does not validate:
 
-Review Findings:
+- maximum number of rows
+- maximum number of elements per row
+- duplicate values
 
-1. Numeric Input Validation
+Because all calldata is attacker-controlled, a malicious
+user can submit excessively large nested arrays that force
+the contract to perform a large number of iterations.
 
-The deposit() function validates:
+Additionally, duplicate values are accepted even though
+protocol requirements specify that duplicates should be
+rejected.
 
-* Amount is greater than zero
-* Amount does not exceed the defined maximum limit
+Impact:
+
+An attacker can:
+
+- trigger excessive gas consumption
+- create denial-of-service conditions
+- bypass business rules requiring unique values
+- reduce protocol scalability
+
+If integrated into a larger protocol, oversized inputs
+could make functionality expensive or unusable.
+
+Proof of Concept:
+
+1. Deploy contract
+
+2. Attacker calls:
+
+   processNestedArray(
+       [
+           [1,2,3,...50],
+           [51,52,53,...100],
+           ...
+           hundreds of rows
+       ]
+   )
+
+3. Contract performs excessive iterations.
+
+OR
+
+4. Attacker calls:
+
+   processNestedArray(
+       [
+           [1,2],
+           [2,3]
+       ]
+   )
+
+5. Duplicate value "2" is accepted even though
+   duplicates should be rejected.
+
+Root Cause:
+
+The function processes user-supplied nested arrays without
+performing validation checks on:
+
+- outer array length
+- inner array length
+- duplicate elements
+
+No safeguards exist to enforce protocol limits.
+
+Recommendation:
+
+Implement strict validation before processing input.
 
 Example:
 
-require(_amount > 0, "Amount must be > 0");
-require(_amount <= 1000 ether, "Amount too large");
-
-Result:
-Invalid numeric inputs are rejected.
-
----
-
-2. Address Validation
-
-The setReceiver() function validates:
-
-* Receiver is not the zero address
+- Reject outer arrays larger than 50 rows
+- Reject inner arrays larger than 50 elements
+- Reject duplicate values
+- Use custom errors instead of require strings
+  for gas efficiency
 
 Example:
 
-require(
-_receiver != address(0),
-"Invalid address"
-);
+if (_numbers.length > 50)
+    revert ArrayTooLarge();
 
-Result:
-Prevents accidental use of the zero address.
+if (_numbers[i].length > 50)
+    revert ArrayTooLarge();
 
----
+if (duplicateFound)
+    revert DuplicateValue(value);
 
-3. Array Validation
-
-The processArray() function validates:
-
-* Maximum array length
-* Individual element values
-
-Examples:
-
-require(
-_numbers.length <= 100,
-"Array too large"
-);
-
-require(
-_numbers[i] > 0,
-"Invalid number"
-);
-
-Result:
-Mitigates gas-exhaustion risks and invalid input values.
-
----
-
-4. String Validation
-
-The validateMessage() function validates:
-
-* Non-empty strings
-* Maximum string length
-
-Examples:
-
-require(
-messageBytes.length > 0,
-"Empty message"
-);
-
-require(
-messageBytes.length <= 50,
-"Message too long"
-);
-
-Result:
-Prevents empty and excessively large string inputs.
-
----
-
-Security Assessment
-
-The contract correctly treats all external calldata as untrusted input and performs validation before processing.
-
-No instances of:
-
-* Missing input validation
-* Unbounded array processing
-* Zero-address misuse
-* Integer overflow
-* Reentrancy
-* Unsafe external calls
-
-were identified.
-
-Conclusion:
-
-No security vulnerabilities were identified during review.
-
-The contract serves as a secure example of manual calldata validation and follows recommended Solidity input-validation practices.
+This ensures predictable gas costs, prevents abuse through
+oversized calldata, and enforces protocol business rules.
 */
+
+//Patched code
+contract ValidateNestedArrayPatched {
+
+    error ArrayTooLarge();
+    error DuplicateValue(uint256 value);
+
+    function processNestedArray(
+        uint256[][] calldata _numbers
+    )
+        external
+        pure
+        returns (uint256)
+    {
+        // Maximum 50 rows
+        if (_numbers.length > 50) {
+            revert ArrayTooLarge();
+        }
+
+        uint256 total;
+
+        for (uint256 i = 0; i < _numbers.length; i++) {
+
+            // Maximum 50 columns
+            if (_numbers[i].length > 50) {
+                revert ArrayTooLarge();
+            }
+
+            for (uint256 j = 0; j < _numbers[i].length; j++) {
+
+                uint256 current =
+                    _numbers[i][j];
+
+                // Check duplicates
+                for (uint256 x = 0; x < _numbers.length; x++) {
+
+                    for (
+                        uint256 y = 0;
+                        y < _numbers[x].length;
+                        y++
+                    ) {
+
+                        if (
+                            x == i &&
+                            y == j
+                        ) {
+                            continue;
+                        }
+
+                        if (
+                            _numbers[x][y] ==
+                            current
+                        ) {
+                            revert DuplicateValue(
+                                current
+                            );
+                        }
+                    }
+                }
+
+                total += current;
+            }
+        }
+
+        return total;
+    }
+}
