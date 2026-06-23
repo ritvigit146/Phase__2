@@ -406,6 +406,91 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+/*
+Audit Report
+
+Title: Unbounded Array Processing in reverseArray()
+
+Severity: Medium because a malicious user can supply extremely large arrays,
+causing excessive gas consumption and potential denial-of-service conditions.
+
+Location:
+Contract: ReturnCalldataValue
+Function: reverseArray()
+
+Vulnerability Description:
+
+The reverseArray() function accepts a user-controlled calldata array and
+creates a memory array of the same size before iterating through every element.
+
+Because no maximum array length is enforced, an attacker can submit
+arbitrarily large arrays, forcing the contract to:
+
+- allocate large amounts of memory
+- perform expensive loops
+- generate massive ABI-encoded return data
+
+This can make the function excessively expensive or cause transactions
+to revert due to gas limitations.
+
+Impact:
+
+An attacker can submit extremely large arrays, resulting in:
+
+- excessive gas consumption
+- memory expansion costs
+- poor scalability
+- denial-of-service conditions
+
+If integrated into a larger protocol, oversized inputs could make
+functionality impractical or unavailable to users.
+
+Proof of Concept:
+
+1. Deploy contract
+
+2. Attacker calls:
+
+   reverseArray(
+       [1,2,3,...100000]
+   )
+
+3. Contract performs:
+
+   - memory allocation for 100000 elements
+   - 100000 loop iterations
+   - ABI encoding of 100000 return values
+
+4. Transaction becomes extremely expensive
+   or reverts due to gas exhaustion.
+
+Root Cause:
+
+The function processes a user-controlled array without validating
+its length.
+
+Specifically:
+
+- Memory allocation depends on _numbers.length
+- Loop iterations depend on _numbers.length
+- No upper bound is enforced
+
+Recommendation:
+
+Restrict the maximum permitted array size before processing.
+
+Example:
+
+require(
+    _numbers.length <= MAX_LENGTH,
+    "Array too large"
+);
+
+where MAX_LENGTH is a reasonable protocol-defined limit.
+
+This ensures predictable gas costs and prevents abuse through
+oversized calldata inputs.
+*/
 //Patched code
 contract ReturnCalldataValuePatched {
 

@@ -1,0 +1,78 @@
+{
+	"compiler": {
+		"version": "0.8.34+commit.80d5c536"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [],
+				"name": "MAX_LENGTH",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256[]",
+						"name": "_numbers",
+						"type": "uint256[]"
+					}
+				],
+				"name": "reverseArray",
+				"outputs": [
+					{
+						"internalType": "uint256[]",
+						"name": "",
+						"type": "uint256[]"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"prac33.sol": "ReturnCalldataValuePatched"
+		},
+		"evmVersion": "osaka",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"prac33.sol": {
+			"keccak256": "0x62dd0e2f42fa63cca35227ee5f673844181e6efb2ecd19ca654b31c6842ff63a",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://6618ec4ce227aaf7b06601aa4f3bfefe1cd576044bdfb33a45b107c73c59fcaf",
+				"dweb:/ipfs/QmSzKHSbsHto782ojgh5bMGpMtyqUufQmx4ZuXT6EiovU2"
+			]
+		}
+	},
+	"version": 1
+}
