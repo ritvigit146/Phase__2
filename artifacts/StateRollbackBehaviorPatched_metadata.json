@@ -6,17 +6,9 @@
 	"output": {
 		"abi": [
 			{
-				"inputs": [
-					{
-						"internalType": "uint256",
-						"name": "_value",
-						"type": "uint256"
-					}
-				],
-				"name": "riskyIncrement",
-				"outputs": [],
-				"stateMutability": "nonpayable",
-				"type": "function"
+				"inputs": [],
+				"name": "ValueTooLarge",
+				"type": "error"
 			},
 			{
 				"inputs": [
@@ -77,7 +69,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"prac37.sol": "StateRollbackBehavior"
+			"prac37.sol": "StateRollbackBehaviorPatched"
 		},
 		"evmVersion": "osaka",
 		"libraries": {},
@@ -92,11 +84,11 @@
 	},
 	"sources": {
 		"prac37.sol": {
-			"keccak256": "0xab5ac33845feba9e90451ce868b2f3636ba4fd257e4b51a4dfa1343ae5fa974e",
+			"keccak256": "0x3d47264cdad9d37ad7387227ee78ef3aaa19024a6ec931cb98ff0204f8949900",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://e5bca729f89c88894568480d7d3e261a5290b4f5a81c0c25ff49ddfdd5947cb0",
-				"dweb:/ipfs/QmdswRLPwzcRn6E1vkPFvCbiYbLs8R2yKfTHXTt4uhbu2Y"
+				"bzz-raw://3cd5cbdd5d9814accc388e309e9cd5ed2d9687071dfb3d813c37514b143b2160",
+				"dweb:/ipfs/QmV1xTPKm5ySARLYW4RG7pNuoWHT3br8e8Di72CHzwpeN8"
 			]
 		}
 	},

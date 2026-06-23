@@ -64,85 +64,27 @@ Auditors inspect:
 
 =========================================================
 */
+contract StateRollbackBehaviorVul {
 
-contract StateRollbackBehavior {
-
-    /*
-        STORAGE VARIABLES
-
-        Persist permanently unless reverted.
-    */
     uint256 public totalCounter;
 
     mapping(address => uint256) public userCounter;
-
-    /*
-    =====================================================
-    UPDATE STATE BEFORE REQUIRE
-    =====================================================
-    */
 
     function riskyIncrement(
         uint256 _value
     )
         external
     {
+        // Storage writes occur first
+        totalCounter += _value;
 
-        /*
-            STEP 1:
-            UPDATE STORAGE
+        userCounter[msg.sender] += _value;
 
-            State changes happen immediately
-            during execution.
-        */
-        totalCounter = totalCounter + _value;
-
-        userCounter[msg.sender] =
-            userCounter[msg.sender] + _value;
-
-        /*
-            STEP 2:
-            REQUIRE CHECK
-
-            If this fails:
-            ALL earlier storage changes revert.
-        */
+        // Validation happens later
         require(
             _value <= 10,
             "Value too large"
         );
-    }
-
-    /*
-    =====================================================
-    SAFE VERSION
-    =====================================================
-
-    Validation first.
-    */
-
-    function safeIncrement(
-        uint256 _value
-    )
-        external
-    {
-
-        /*
-            VALIDATE FIRST
-        */
-        require(
-            _value <= 10,
-            "Value too large"
-        );
-
-        /*
-            UPDATE STATE AFTER VALIDATION
-        */
-        totalCounter =
-            totalCounter + _value;
-
-        userCounter[msg.sender] =
-            userCounter[msg.sender] + _value;
     }
 }
 
@@ -480,3 +422,144 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+/*
+Audit Report
+
+Title: State Updates Performed Before Validation (Violation of Checks-Effects Pattern)
+
+Severity: Low because the EVM correctly reverts all state
+changes on failure, but unnecessary storage operations
+increase gas costs and reduce efficiency.
+
+Location:
+Contract: StateRollbackBehavior
+Function: riskyIncrement()
+
+Vulnerability Description:
+
+The riskyIncrement() function updates storage variables
+before validating the user input.
+
+Specifically, the function:
+
+1. Updates totalCounter
+2. Updates userCounter[msg.sender]
+3. Executes a require() validation check
+
+If the validation fails, Ethereum reverts the entire
+transaction and restores the previous state.
+
+Although this prevents permanent state corruption, the
+contract still performs unnecessary storage reads and
+writes before reverting.
+
+This violates the recommended Checks → Effects →
+Interactions (CEI) pattern.
+
+Impact:
+
+An attacker can repeatedly submit invalid inputs that
+trigger transaction reverts after storage operations
+have already been executed.
+
+This results in:
+
+- unnecessary gas consumption
+- wasted computation
+- reduced contract efficiency
+
+No permanent loss of funds or state corruption occurs
+because Ethereum transactions are atomic.
+
+Proof of Concept:
+
+1. Deploy contract
+
+2. Call:
+
+   riskyIncrement(50)
+
+3. Execution:
+
+   totalCounter = totalCounter + 50
+   userCounter[msg.sender] += 50
+
+4. Validation executes:
+
+   require(50 <= 10)
+
+5. Validation fails
+
+6. Transaction reverts
+
+7. Storage returns to original values
+
+8. Gas spent before the revert is lost
+
+Root Cause:
+
+Input validation is performed after state updates.
+
+The function allows expensive storage operations to occur
+before determining whether execution should proceed.
+
+Recommendation:
+
+Perform all validation checks before modifying state.
+
+Example:
+
+function safeIncrement(
+    uint256 _value
+)
+    external
+{
+    require(
+        _value <= 10,
+        "Value too large"
+    );
+
+    totalCounter += _value;
+    userCounter[msg.sender] += _value;
+}
+
+Additionally, consider using custom errors instead of
+require strings for improved gas efficiency.
+
+Example:
+
+error ValueTooLarge();
+
+if (_value > 10) {
+    revert ValueTooLarge();
+}
+
+This follows the Checks → Effects → Interactions pattern
+and avoids unnecessary storage operations when validation
+fails.
+*/
+//Patched code
+contract StateRollbackBehaviorPatched {
+
+    error ValueTooLarge();
+
+    uint256 public totalCounter;
+
+    mapping(address => uint256) public userCounter;
+
+    function safeIncrement(
+        uint256 _value
+    )
+        external
+    {
+        // CHECKS
+        if (_value > 10) {
+            revert ValueTooLarge();
+        }
+
+        // EFFECTS
+        totalCounter += _value;
+
+        userCounter[msg.sender] += _value;
+    }
+}
