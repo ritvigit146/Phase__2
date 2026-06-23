@@ -72,117 +72,42 @@ Auditors mentally track:
 
 =========================================================
 */
+contract MentalExecutionTracingVul {
 
-contract MentalExecutionTracing {
-
-    /*
-        STORAGE VARIABLES
-
-        Persist permanently on blockchain.
-    */
     uint256 public totalBalance;
 
     mapping(address => uint256) public balances;
-
-    /*
-    =====================================================
-    DEPOSIT FUNCTION
-    =====================================================
-    */
 
     function deposit(
         uint256 _amount
     )
         external
     {
-
-        /*
-            STEP 1:
-            Validate amount.
-        */
         require(
             _amount > 0,
             "Invalid amount"
         );
 
-        /*
-            STEP 2:
-            Read current balance from storage.
-
-            balances[msg.sender]
-            initially may be 0.
-        */
-        uint256 currentBalance =
-            balances[msg.sender];
-
-        /*
-            STEP 3:
-            Add deposit amount.
-        */
-        uint256 newBalance =
-            currentBalance + _amount;
-
-        /*
-            STEP 4:
-            Update storage mapping.
-        */
         balances[msg.sender] =
-            newBalance;
+            balances[msg.sender] + _amount;
 
-        /*
-            STEP 5:
-            Update total system balance.
-        */
         totalBalance =
             totalBalance + _amount;
     }
-
-    /*
-    =====================================================
-    WITHDRAW FUNCTION
-    =====================================================
-    */
 
     function withdraw(
         uint256 _amount
     )
         external
     {
-
-        /*
-            STEP 1:
-            Read user balance from storage.
-        */
-        uint256 userBalance =
-            balances[msg.sender];
-
-        /*
-            STEP 2:
-            Ensure enough balance exists.
-        */
         require(
-            userBalance >= _amount,
+            balances[msg.sender] >= _amount,
             "Insufficient balance"
         );
 
-        /*
-            STEP 3:
-            Subtract withdrawal amount.
-        */
-        uint256 updatedBalance =
-            userBalance - _amount;
-
-        /*
-            STEP 4:
-            Save updated balance.
-        */
         balances[msg.sender] =
-            updatedBalance;
+            balances[msg.sender] - _amount;
 
-        /*
-            STEP 5:
-            Reduce total system balance.
-        */
         totalBalance =
             totalBalance - _amount;
     }
@@ -556,121 +481,127 @@ IMPORTANT CONCEPTS LEARNED
 /*
 Audit Report
 
-Title: No Security Vulnerabilities Identified
+Title: Improper Accounting Due to User-Controlled Deposit Amount
 
-Severity: Informational
+Severity: Medium because users can create arbitrary balances
+without depositing real assets into the contract.
 
-Location: Contract: MentalExecutionTracing
+Location:
+Contract: MentalExecutionTracing
+Function: deposit()
 
-Summary:
+Vulnerability Description:
 
-The contract demonstrates basic balance accounting and execution tracing concepts. During review, no exploitable security vulnerabilities were identified within the provided scope.
+The deposit() function accepts a user-controlled _amount
+parameter and credits the caller's balance using that value.
 
----
+The contract assumes that the supplied amount represents a
+real deposit, but no ETH transfer or asset transfer occurs.
 
-Functions Reviewed
+As a result, any user can increase their recorded balance
+and the global totalBalance by providing an arbitrary number.
 
-1. deposit(uint256 _amount)
+Impact:
 
-2. withdraw(uint256 _amount)
+An attacker can:
 
----
+- create fake balances
+- inflate totalBalance
+- manipulate protocol accounting
+- bypass intended deposit requirements
 
-Finding Details
+If future functionality relies on these balances for
+withdrawals, rewards, voting power, or access control,
+the attacker may gain unfair advantages.
 
-No security vulnerabilities identified.
+Proof of Concept:
 
-The contract correctly:
+1. Deploy contract
 
-* Validates deposit amounts are greater than zero
-* Validates sufficient balance before withdrawal
-* Updates user balances consistently
-* Updates totalBalance consistently
-* Prevents unauthorized balance reductions
-* Relies on Solidity 0.8.x built-in overflow protection
+2. Attacker calls:
 
----
+   deposit(1000000)
 
-deposit()
+3. Execution:
 
-Validation:
+   balances[attacker] = 1000000
+   totalBalance = 1000000
 
-require(
-_amount > 0,
-"Invalid amount"
-);
+4. No ETH or tokens were transferred to the contract.
 
-Assessment:
+5. The attacker now possesses a large recorded balance
+   without providing any value.
 
-The function prevents zero-value deposits and correctly updates internal accounting variables.
+Root Cause:
 
-Result:
+The function trusts a user-supplied _amount parameter.
 
-No issue identified.
-
----
-
-withdraw()
-
-Validation:
-
-require(
-userBalance >= _amount,
-"Insufficient balance"
-);
-
-Assessment:
-
-The function verifies sufficient balance before subtraction and updates state consistently.
-
-Result:
-
-No issue identified.
-
----
-
-Security Review
-
-The contract does not contain:
-
-* Reentrancy vulnerabilities
-* Integer overflow vulnerabilities
-* Missing balance validation
-* Unsafe external calls
-* Access control issues
-* Denial-of-service vectors
-* Storage corruption issues
-
----
-
-Notes
-
-The contract maintains internal accounting only.
-
-No ETH is accepted or transferred.
-
-No external contract interactions occur.
-
-Therefore, common attack vectors such as reentrancy are not applicable.
-
----
-
-Conclusion
-
-No security vulnerabilities were identified during assessment.
-
-The contract functions as an educational example for:
-
-* execution tracing
-* state transition analysis
-* storage updates
-* require() validation flow
-
-Overall Risk Rating:
-
-Informational
+The contract updates accounting state based solely on
+external input and does not verify that any assets were
+actually received.
 
 Recommendation:
 
-No remediation required.
+Use actual transferred value instead of trusting user input.
+
+For ETH deposits:
+
+   function deposit()
+       external
+       payable
+   {
+       require(
+           msg.value > 0,
+           "No ETH sent"
+       );
+
+       balances[msg.sender] += msg.value;
+       totalBalance += msg.value;
+   }
+
+For ERC20 deposits:
+
+- Transfer tokens into the contract
+- Verify transfer success
+- Credit balances based on actual tokens received
+
+This ensures contract accounting matches real asset balances.
 */
+//Patched code
+contract MentalExecutionTracingPatched {
+
+    uint256 public totalBalance;
+
+    mapping(address => uint256) public balances;
+
+    function deposit()
+        external
+        payable
+    {
+        require(
+            msg.value > 0,
+            "No ETH sent"
+        );
+
+        balances[msg.sender] += msg.value;
+
+        totalBalance += msg.value;
+    }
+
+    function withdraw(
+        uint256 _amount
+    )
+        external
+    {
+        require(
+            balances[msg.sender] >= _amount,
+            "Insufficient balance"
+        );
+
+        balances[msg.sender] -= _amount;
+
+        totalBalance -= _amount;
+
+        payable(msg.sender).transfer(_amount);
+    }
+}
