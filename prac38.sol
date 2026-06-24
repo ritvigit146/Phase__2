@@ -70,91 +70,27 @@ Auditors inspect:
 
 =========================================================
 */
+contract TransactionAtomicityVul {
 
-contract TransactionAtomicity {
-
-    /*
-        STORAGE VARIABLES
-
-        Persist only if transaction succeeds.
-    */
     uint256 public globalCounter;
 
     mapping(address => uint256) public balances;
-
-    /*
-    =====================================================
-    FAIL REQUIRE AFTER STATE UPDATE
-    =====================================================
-    */
 
     function brokenExecution(
         uint256 _amount
     )
         external
     {
+        // EFFECTS FIRST (bad pattern)
+        globalCounter += _amount;
 
-        /*
-            STEP 1:
-            UPDATE GLOBAL COUNTER
+        balances[msg.sender] += _amount;
 
-            Temporary state update.
-        */
-        globalCounter =
-            globalCounter + _amount;
-
-        /*
-            STEP 2:
-            UPDATE USER BALANCE
-
-            Temporary state update.
-        */
-        balances[msg.sender] =
-            balances[msg.sender] + _amount;
-
-        /*
-            STEP 3:
-            REQUIRE FAILURE
-
-            If _amount > 5:
-            transaction reverts completely.
-        */
+        // CHECKS LAST
         require(
             _amount <= 5,
             "Amount too large"
         );
-    }
-
-    /*
-    =====================================================
-    SAFE EXECUTION
-    =====================================================
-
-    Validation first.
-    */
-
-    function safeExecution(
-        uint256 _amount
-    )
-        external
-    {
-
-        /*
-            VALIDATE BEFORE CHANGES
-        */
-        require(
-            _amount <= 5,
-            "Amount too large"
-        );
-
-        /*
-            UPDATE STATE AFTER VALIDATION
-        */
-        globalCounter =
-            globalCounter + _amount;
-
-        balances[msg.sender] =
-            balances[msg.sender] + _amount;
     }
 }
 
@@ -503,4 +439,34 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+/*
+Audit Report
+Title:Fail require after state update
+Severity: Medium
+
+*/
 //Patched code
+contract TransactionAtomicityPatched {
+
+    error AmountTooLarge();
+
+    uint256 public globalCounter;
+
+    mapping(address => uint256) public balances;
+
+    function safeExecution(
+        uint256 _amount
+    )
+        external
+    {
+        // CHECKS
+        if (_amount > 5) {
+            revert AmountTooLarge();
+        }
+
+        // EFFECTS
+        globalCounter += _amount;
+
+        balances[msg.sender] += _amount;
+    }
+}

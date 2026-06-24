@@ -71,132 +71,23 @@ Auditors inspect:
 
 =========================================================
 */
+contract MultipleRequireChecksVul {
 
-contract MultipleRequireChecks {
-
-    /*
-        OWNER ADDRESS
-
-        Set during deployment.
-    */
-    address public owner;
-
-    /*
-        USER BALANCES
-    */
     mapping(address => uint256) public balances;
 
-    /*
-        MAX LIMIT
-    */
-    uint256 public constant MAX_DEPOSIT = 100 ether;
+    bool public paused;
 
-    /*
-        CONSTRUCTOR
+    mapping(address => bool) public blacklisted;
 
-        Runs once during deployment.
-    */
-    constructor() {
-
-        owner = msg.sender;
-    }
-
-    /*
-    =====================================================
-    DEPOSIT FUNCTION
-    =====================================================
-    */
-
-    function deposit(
+    function withdraw(
         uint256 _amount
     )
         external
     {
+        // Missing pause check
+        // Missing blacklist check
 
-        /*
-            REQUIRE #1
-
-            Amount must be positive.
-        */
-        require(
-            _amount > 0,
-            "Amount must be > 0"
-        );
-
-        /*
-            REQUIRE #2
-
-            Amount must not exceed max limit.
-        */
-        require(
-            _amount <= MAX_DEPOSIT,
-            "Deposit too large"
-        );
-
-        /*
-            REQUIRE #3
-
-            Prevent overflow-like balance growth.
-        */
-        require(
-            balances[msg.sender] + _amount
-                <= 1000 ether,
-            "Balance limit exceeded"
-        );
-
-        /*
-            EXECUTION REACHES HERE
-            ONLY IF ALL CHECKS PASS.
-        */
-        balances[msg.sender] += _amount;
-    }
-
-    /*
-    =====================================================
-    OWNER-ONLY RESET
-    =====================================================
-    */
-
-    function resetBalance(
-        address _user
-    )
-        external
-    {
-
-        /*
-            REQUIRE #1
-
-            Access control.
-        */
-        require(
-            msg.sender == owner,
-            "Not owner"
-        );
-
-        /*
-            REQUIRE #2
-
-            Reject zero address.
-        */
-        require(
-            _user != address(0),
-            "Invalid address"
-        );
-
-        /*
-            REQUIRE #3
-
-            User must have balance.
-        */
-        require(
-            balances[_user] > 0,
-            "No balance"
-        );
-
-        /*
-            RESET USER BALANCE
-        */
-        balances[_user] = 0;
+        balances[msg.sender] -= _amount;
     }
 }
 
@@ -519,57 +410,153 @@ IMPORTANT CONCEPTS LEARNED
 /*
 Audit Report
 
-Title: No Critical Vulnerabilities Identified
+Title: Missing Pause and Blacklist Validation in withdraw()
 
-Severity: Informational
+Severity: Medium because unauthorized or restricted users
+can continue interacting with the protocol despite
+security controls being enabled.
 
 Location:
 Contract: MultipleRequireChecks
+Function: withdraw() (Mini Challenge Implementation)
 
-Description:
+Vulnerability Description:
 
-The contract properly implements multiple require()
-statements to validate user input and enforce access
-control before state modifications occur.
+The withdraw() function fails to implement all required
+execution guards before processing withdrawals.
 
-The following protections are present:
+Specifically, the function does not verify:
 
-- Positive amount validation
-- Maximum deposit limit validation
-- Balance cap validation
-- Owner-only access control
-- Zero-address validation
-- Existing balance validation
+- whether the protocol is paused
+- whether the caller is blacklisted
 
-The contract follows a fail-fast design where execution
-stops immediately when an invalid condition is detected.
+As a result, users may continue withdrawing funds even
+when emergency shutdown mechanisms or blacklist controls
+have been activated.
+
+This weakens protocol security and bypasses intended
+administrative protections.
 
 Impact:
 
-No direct security impact identified.
+An attacker or restricted user may:
 
-The validation logic prevents:
+- bypass emergency pause controls
+- bypass blacklist restrictions
+- continue withdrawing funds during incidents
+- violate protocol security policies
 
-- unauthorized balance resets
-- invalid deposits
-- excessive balance accumulation
-- interaction with zero addresses
+This can undermine administrative responses to attacks,
+exploits, or operational emergencies.
+
+Proof of Concept:
+
+1. Deploy contract
+
+2. User deposits funds
+
+3. Owner activates emergency pause:
+
+   paused = true
+
+4. User calls:
+
+   withdraw(10)
+
+5. Withdrawal succeeds despite protocol being paused
+
+--------------------------------------------------
+
+OR
+
+--------------------------------------------------
+
+1. Owner blacklists attacker:
+
+   blacklisted[attacker] = true
+
+2. Attacker calls:
+
+   withdraw(10)
+
+3. Withdrawal succeeds despite blacklist status
 
 Root Cause:
 
-N/A
+The withdraw() function only validates user balances.
 
-No vulnerability identified.
+Critical execution guards are missing:
+
+- pause validation
+- blacklist validation
+
+The function does not enforce all protocol assumptions
+before updating state.
 
 Recommendation:
 
-No remediation required.
+Add layered validation checks before executing
+withdrawal logic.
 
-Continue following:
+Example:
 
-1. Checks
-2. Effects
-3. Interactions
+if (paused) {
+    revert ContractPaused();
+}
 
-for future contract development.
+if (blacklisted[msg.sender]) {
+    revert BlacklistedUser();
+}
+
+if (balances[msg.sender] < amount) {
+    revert InsufficientBalance();
+}
+
+balances[msg.sender] -= amount;
+
+Additionally, follow the
+Checks -> Effects -> Interactions (CEI) pattern
+for all state-changing functions.
+
+This ensures that protocol restrictions are enforced
+before any state modifications occur
 */
+
+//Patched code
+contract MultipleRequireChecksPatched {
+
+    error ContractPaused();
+    error BlacklistedUser();
+    error InsufficientBalance();
+
+    mapping(address => uint256) public balances;
+
+    mapping(address => bool) public blacklisted;
+
+    bool public paused;
+
+    function withdraw(
+        uint256 _amount
+    )
+        external
+    {
+        // CHECK #1
+        if (paused) {
+            revert ContractPaused();
+        }
+
+        // CHECK #2
+        if (blacklisted[msg.sender]) {
+            revert BlacklistedUser();
+        }
+
+        // CHECK #3
+        if (
+            balances[msg.sender] < _amount
+        ) {
+            revert InsufficientBalance();
+        }
+
+        balances[msg.sender] -= _amount;
+    }
+}
