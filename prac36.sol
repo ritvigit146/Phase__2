@@ -83,28 +83,19 @@ contract MentalExecutionTracingVul {
     )
         external
     {
-        require(
-            _amount > 0,
-            "Invalid amount"
-        );
-
-        balances[msg.sender] =
-            balances[msg.sender] + _amount;
-
-        totalBalance =
-            totalBalance + _amount;
+        balances[msg.sender] += _amount;
+        totalBalance += _amount;
     }
 
+    /*
+        VULNERABLE
+        Missing balance validation
+    */
     function withdraw(
         uint256 _amount
     )
         external
     {
-        require(
-            balances[msg.sender] >= _amount,
-            "Insufficient balance"
-        );
-
         balances[msg.sender] =
             balances[msg.sender] - _amount;
 
@@ -481,10 +472,9 @@ IMPORTANT CONCEPTS LEARNED
 /*
 Audit Report
 
-Title: Improper Accounting Due to User-Controlled Deposit Amount
+Title: Missing Input Validation in deposit()
 
-Severity: Medium because users can create arbitrary balances
-without depositing real assets into the contract.
+Severity: Low
 
 Location:
 Contract: MentalExecutionTracing
@@ -492,100 +482,102 @@ Function: deposit()
 
 Vulnerability Description:
 
-The deposit() function accepts a user-controlled _amount
-parameter and credits the caller's balance using that value.
+The deposit() function does not validate the _amount
+parameter before updating user balances and totalBalance.
 
-The contract assumes that the supplied amount represents a
-real deposit, but no ETH transfer or asset transfer occurs.
+As a result, users can call:
 
-As a result, any user can increase their recorded balance
-and the global totalBalance by providing an arbitrary number.
+    deposit(0)
+
+which performs unnecessary execution and storage writes
+without representing a meaningful deposit operation.
+
+The function accepts invalid business-logic input.
 
 Impact:
 
-An attacker can:
+Currently:
 
-- create fake balances
-- inflate totalBalance
-- manipulate protocol accounting
-- bypass intended deposit requirements
+- No direct fund loss occurs
+- No unauthorized access occurs
+- Contract accounting remains correct
 
-If future functionality relies on these balances for
-withdrawals, rewards, voting power, or access control,
-the attacker may gain unfair advantages.
+However:
+
+- Invalid deposits are accepted
+- Protocol rules are not enforced
+- Unnecessary transactions consume gas
+- Future integrations may assume deposits are always
+  greater than zero
 
 Proof of Concept:
 
 1. Deploy contract
 
-2. Attacker calls:
+2. Call:
 
-   deposit(1000000)
+    deposit(0)
 
-3. Execution:
+3. Transaction succeeds
 
-   balances[attacker] = 1000000
-   totalBalance = 1000000
+4. Storage values remain:
 
-4. No ETH or tokens were transferred to the contract.
+    balances[user] = 0
+    totalBalance = 0
 
-5. The attacker now possesses a large recorded balance
-   without providing any value.
+5. Invalid operation was accepted
 
 Root Cause:
 
-The function trusts a user-supplied _amount parameter.
+The deposit() function lacks validation for the
+_amount parameter.
 
-The contract updates accounting state based solely on
-external input and does not verify that any assets were
-actually received.
+No require() statement exists to ensure:
+
+    _amount > 0
+
+before processing.
 
 Recommendation:
 
-Use actual transferred value instead of trusting user input.
+Validate input before updating state.
 
-For ETH deposits:
+Example:
 
-   function deposit()
-       external
-       payable
-   {
-       require(
-           msg.value > 0,
-           "No ETH sent"
-       );
+    require(
+        _amount > 0,
+        "Invalid amount"
+    );
 
-       balances[msg.sender] += msg.value;
-       totalBalance += msg.value;
-   }
+    balances[msg.sender] += _amount;
+    totalBalance += _amount;
 
-For ERC20 deposits:
-
-- Transfer tokens into the contract
-- Verify transfer success
-- Credit balances based on actual tokens received
-
-This ensures contract accounting matches real asset balances.
+Validation should occur before any state changes
+following the Checks-Effects-Interactions pattern
 */
+
 //Patched code
-contract MentalExecutionTracingPatched {
+contract MentalExecutionTracing {
+
+    error InsufficientBalance();
+    error InvalidAmount();
 
     uint256 public totalBalance;
 
     mapping(address => uint256) public balances;
 
-    function deposit()
+    function deposit(
+        uint256 _amount
+    )
         external
-        payable
     {
-        require(
-            msg.value > 0,
-            "No ETH sent"
-        );
+        if (_amount == 0) {
+            revert InvalidAmount();
+        }
 
-        balances[msg.sender] += msg.value;
+        balances[msg.sender] += _amount;
 
-        totalBalance += msg.value;
+        totalBalance += _amount;
     }
 
     function withdraw(
@@ -593,15 +585,18 @@ contract MentalExecutionTracingPatched {
     )
         external
     {
-        require(
-            balances[msg.sender] >= _amount,
-            "Insufficient balance"
-        );
+        if (_amount == 0) {
+            revert InvalidAmount();
+        }
+
+        if (
+            balances[msg.sender] < _amount
+        ) {
+            revert InsufficientBalance();
+        }
 
         balances[msg.sender] -= _amount;
 
         totalBalance -= _amount;
-
-        payable(msg.sender).transfer(_amount);
     }
 }

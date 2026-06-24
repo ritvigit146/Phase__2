@@ -6,6 +6,16 @@
 	"output": {
 		"abi": [
 			{
+				"inputs": [],
+				"name": "InsufficientBalance",
+				"type": "error"
+			},
+			{
+				"inputs": [],
+				"name": "InvalidAmount",
+				"type": "error"
+			},
+			{
 				"inputs": [
 					{
 						"internalType": "address",
@@ -92,11 +102,11 @@
 	},
 	"sources": {
 		"prac36.sol": {
-			"keccak256": "0x58deb87edfea2125da0f0707ef7b625eb62e650abb25a27d5f3f797e7161e0d8",
+			"keccak256": "0x4305f982ca0fb046a3c690f047f09b3ac33158a6ad9374256aa5e3edbc62edd4",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://ae5c4312eb4a4569bf82aa8c149aaa2d977ba40458d0fe106d0ae9393c0d4daa",
-				"dweb:/ipfs/QmUWEDiuVNEvBfxswjpZkJVeRi8hWNcF3RPCzZuoahcSLT"
+				"bzz-raw://257d61e9a59b9ae22a868ec14d44dc04deac4c0dc4b89ad7189ba5dd49e2d371",
+				"dweb:/ipfs/QmaRrfcZPa19URNXMLQT2sF8Paju9URf6ZXwxgn86vmQcJ"
 			]
 		}
 	},
