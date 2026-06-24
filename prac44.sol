@@ -73,88 +73,33 @@ Auditors inspect:
 
 =========================================================
 */
+contract ModifierExecutionFlowVul {
 
-contract ModifierExecutionFlow {
-
-    /*
-        OWNER ADDRESS
-    */
     address public owner;
 
-    /*
-        PAUSE STATUS
-    */
     bool public paused;
 
-    /*
-        USER BALANCES
-    */
     mapping(address => uint256) public balances;
 
-    /*
-        CONSTRUCTOR
-
-        Runs once during deployment.
-    */
     constructor() {
-
         owner = msg.sender;
     }
 
-    /*
-    =====================================================
-    MODIFIER: ONLY OWNER
-    =====================================================
-    */
-
     modifier onlyOwner() {
-
-        /*
-            PRE-EXECUTION CHECK
-
-            Runs BEFORE function body.
-        */
         require(
             msg.sender == owner,
             "Not owner"
         );
-
-        /*
-            SPECIAL SYMBOL: _;
-
-            Represents:
-            function body execution point.
-        */
         _;
     }
 
-    /*
-    =====================================================
-    MODIFIER: WHEN NOT PAUSED
-    =====================================================
-    */
-
     modifier whenNotPaused() {
-
-        /*
-            PRE-EXECUTION VALIDATION
-        */
         require(
             paused == false,
             "Contract paused"
         );
-
-        /*
-            Continue to function body.
-        */
         _;
     }
-
-    /*
-    =====================================================
-    OWNER-ONLY FUNCTION
-    =====================================================
-    */
 
     function setPaused(
         bool _status
@@ -162,19 +107,8 @@ contract ModifierExecutionFlow {
         external
         onlyOwner
     {
-
-        /*
-            Function body executes ONLY
-            after modifier passes.
-        */
         paused = _status;
     }
-
-    /*
-    =====================================================
-    DEPOSIT FUNCTION
-    =====================================================
-    */
 
     function deposit(
         uint256 _amount
@@ -182,11 +116,6 @@ contract ModifierExecutionFlow {
         external
         whenNotPaused
     {
-
-        /*
-            Function body executes ONLY
-            if modifier allows execution.
-        */
         require(
             _amount > 0,
             "Invalid amount"
@@ -197,7 +126,11 @@ contract ModifierExecutionFlow {
 
     /*
     =====================================================
-    MULTIPLE MODIFIERS
+    VULNERABILITY
+
+    Missing onlyOwner modifier.
+
+    ANY USER can reset balances.
     =====================================================
     */
 
@@ -205,15 +138,8 @@ contract ModifierExecutionFlow {
         address _user
     )
         external
-        onlyOwner
         whenNotPaused
     {
-
-        /*
-            Executes ONLY if:
-            - caller is owner
-            - contract not paused
-        */
         balances[_user] = 0;
     }
 }
@@ -576,88 +502,153 @@ IMPORTANT CONCEPTS LEARNED
 */
 /*
 Audit Report
+Title: Missing Pause Protection on depositWithBonus()
 
-Title: Emergency Reset Cannot Execute While Contract Is Paused
-
-Severity: Informational because administrative recovery actions are
-blocked during pause state.
+Severity: Medium because users can continue modifying balances even when
+the contract is intended to be paused.
 
 Location:
 Contract: ModifierExecutionFlow
-Function: emergencyReset()
+Function: depositWithBonus() (hypothetical function added without modifier)
 
 Vulnerability Description:
 
-The emergencyReset() function is protected by both:
+The contract relies on the whenNotPaused modifier to prevent state changes
+while the protocol is paused.
 
-                onlyOwner
-                whenNotPaused
+If a developer adds a new balance-modifying function but forgets to apply
+the whenNotPaused modifier, users can bypass the pause mechanism and
+continue interacting with the protocol.
 
-Execution requires:
-
-                msg.sender == owner
-
-and
-
-                paused == false
-
-As a result, the owner cannot execute emergencyReset()
-while the contract is paused.
-
-In many protocols, emergency or recovery functions are
-expected to remain available during paused states so that
-administrators can perform corrective actions.
+This creates inconsistent security enforcement because some functions
+respect the paused state while others do not.
 
 Impact:
 
-No direct security impact exists.
+An attacker or normal user can continue updating balances while the
+protocol is paused.
 
-However:
+If pause functionality is intended for:
 
-- administrative recovery actions are blocked
-- incident response flexibility is reduced
-- operational maintenance becomes harder
+- emergency response
+- incident containment
+- protocol upgrades
+- vulnerability mitigation
+
+then the protection becomes ineffective.
 
 Proof of Concept:
 
-                1. Deploy contract
+1. Deploy contract
 
-                2. Owner calls:
-                    setPaused(true)
+2. Owner calls:
+   setPaused(true)
 
-                3. Owner calls:
-                    emergencyReset(user)
+3. Attacker calls:
+   depositWithBonus(100)
 
-                4. whenNotPaused modifier fails
+4. Transaction succeeds because no
+   whenNotPaused modifier exists.
 
-                5. Transaction reverts
-
-                6. User balance cannot be reset
+5. balances[attacker] increases despite
+   protocol being paused.
 
 Root Cause:
 
-The emergencyReset() function uses the
-whenNotPaused modifier.
+The function lacks the whenNotPaused modifier.
 
-This prevents execution during pause state,
-even for authorized administrators.
+Security assumptions rely on pause protection,
+but enforcement is not applied consistently
+across all state-changing functions.
 
 Recommendation:
 
-Consider whether emergency actions should remain
-available while the contract is paused.
+Apply the whenNotPaused modifier to every
+function that changes protocol state.
 
 Example:
 
-                function emergencyReset(address _user)
-                    external
-                    onlyOwner
-                {
-                    balances[_user] = 0;
-                }
-
-If the intended design is to allow administrative
-recovery during emergencies, remove the
-whenNotPaused modifier.
+function depositWithBonus(
+    uint256 _amount
+)
+    external
+    whenNotPaused
+{
+    ...
+}
 
 */
+
+// Patched code
+contract ModifierExecutionFlow {
+
+    address public owner;
+
+    bool public paused;
+
+    mapping(address => uint256) public balances;
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    modifier onlyOwner() {
+        require(
+            msg.sender == owner,
+            "Not owner"
+        );
+        _;
+    }
+
+    modifier whenNotPaused() {
+        require(
+            paused == false,
+            "Contract paused"
+        );
+        _;
+    }
+
+    function setPaused(
+        bool _status
+    )
+        external
+        onlyOwner
+    {
+        paused = _status;
+    }
+
+    function deposit(
+        uint256 _amount
+    )
+        external
+        whenNotPaused
+    {
+        require(
+            _amount > 0,
+            "Invalid amount"
+        );
+
+        balances[msg.sender] += _amount;
+    }
+
+    /*
+    =====================================================
+    PATCH
+
+    onlyOwner added.
+
+    Unauthorized users cannot
+    reset balances.
+    =====================================================
+    */
+
+    function emergencyReset(
+        address _user
+    )
+        external
+        onlyOwner
+        whenNotPaused
+    {
+        balances[_user] = 0;
+    }
+}

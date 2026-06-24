@@ -108,7 +108,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"prac44.sol": "ModifierExecutionFlow"
+			"prac44.sol": "ModifierExecutionFlowVul"
 		},
 		"evmVersion": "osaka",
 		"libraries": {},
