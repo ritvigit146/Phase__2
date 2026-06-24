@@ -72,55 +72,60 @@ Auditors inspect:
 
 =========================================================
 */
+contract FunctionExecutionChainingVul {
 
-contract FunctionExecutionChaining {
-
-    /*
-        STORAGE VARIABLES
-    */
     mapping(address => uint256) public balances;
 
     uint256 public totalDeposits;
-
-    /*
-    =====================================================
-    MAIN ENTRY FUNCTION
-    =====================================================
-    */
 
     function deposit(
         uint256 _amount
     )
         external
     {
-
-        /*
-            STEP 1:
-            Validate input.
-        */
         validateAmount(_amount);
 
-        /*
-            STEP 2:
-            Add balance.
-        */
         addBalance(
             msg.sender,
             _amount
         );
 
-        /*
-            STEP 3:
-            Update global total.
-        */
         updateTotal(_amount);
     }
 
     /*
-    =====================================================
-    VALIDATION FUNCTION
-    =====================================================
+        VULNERABLE PATH
+
+        Missing validation.
     */
+    function depositWithBonus(
+        uint256 _amount
+    )
+        external
+    {
+        depositInternal(_amount);
+
+        addBalance(
+            msg.sender,
+            10
+        );
+    }
+
+    /*
+        Validation accidentally omitted.
+    */
+    function depositInternal(
+        uint256 _amount
+    )
+        internal
+    {
+        addBalance(
+            msg.sender,
+            _amount
+        );
+
+        updateTotal(_amount);
+    }
 
     function validateAmount(
         uint256 _amount
@@ -128,7 +133,6 @@ contract FunctionExecutionChaining {
         internal
         pure
     {
-
         require(
             _amount > 0,
             "Amount must be > 0"
@@ -140,89 +144,21 @@ contract FunctionExecutionChaining {
         );
     }
 
-    /*
-    =====================================================
-    BALANCE UPDATE FUNCTION
-    =====================================================
-    */
-
     function addBalance(
         address _user,
         uint256 _amount
     )
         internal
     {
-
-        /*
-            Storage update.
-        */
         balances[_user] += _amount;
     }
-
-    /*
-    =====================================================
-    TOTAL UPDATE FUNCTION
-    =====================================================
-    */
 
     function updateTotal(
         uint256 _amount
     )
         internal
     {
-
         totalDeposits += _amount;
-    }
-
-    /*
-    =====================================================
-    CHAINED BONUS FLOW
-    =====================================================
-    */
-
-    function depositWithBonus(
-        uint256 _amount
-    )
-        external
-    {
-
-        /*
-            Function calling another function.
-        */
-        depositInternal(_amount);
-
-        /*
-            Additional bonus logic.
-        */
-        addBalance(
-            msg.sender,
-            10
-        );
-    }
-
-    /*
-    =====================================================
-    INTERNAL DEPOSIT FLOW
-    =====================================================
-    */
-
-    function depositInternal(
-        uint256 _amount
-    )
-        internal
-    {
-
-        /*
-            Chained execution continues.
-        */
-        validateAmount(_amount);
-
-        addBalance(
-            msg.sender,
-            _amount
-        );
-
-        updateTotal(_amount);
     }
 }
 
@@ -575,102 +511,194 @@ IMPORTANT CONCEPTS LEARNED
 /*
 Audit Report
 
-Title: No Vulnerability Identified in Function Execution Chain
+Title: Missing Centralized Validation in Execution Chain
 
-Severity: Informational because the current implementation does not
-contain an exploitable security issue.
+Severity: Medium because future execution paths may bypass critical validation checks and violate protocol rules.
 
 Location:
 Contract: FunctionExecutionChaining
-Functions:
-    deposit()
-    depositWithBonus()
-    depositInternal()
+Function: depositWithBonus()
+Function: depositInternal()
 
 Vulnerability Description:
 
-The contract uses function execution chaining to organize validation,
-balance updates, and accounting logic.
+The contract relies on validation being manually called before state-changing
+operations.
 
-All execution paths correctly perform validation before modifying state.
+Currently, depositInternal() performs validation correctly through:
 
-Current flow:
+    validateAmount(_amount);
 
-                deposit()
-                    -> validateAmount()
-                    -> addBalance()
-                    -> updateTotal()
+However, the architecture separates validation logic from storage-update logic.
 
-                depositWithBonus()
-                    -> depositInternal()
-                    -> validateAmount()
-                    -> addBalance()
-                    -> updateTotal()
+Future developers may create new execution paths that call:
 
-No execution path allows a user to bypass validation requirements.
+    addBalance()
+    updateTotal()
 
-No unauthorized state modification, reentrancy risk, or access-control
-issue was identified.
+without first calling validateAmount().
+
+This can lead to inconsistent validation enforcement across different
+execution chains.
 
 Impact:
 
-No direct security impact exists.
+An attacker may exploit an alternative execution path to:
 
-The implementation correctly:
+- bypass deposit limits
+- violate protocol rules
+- manipulate accounting values
+- create inconsistent system state
 
-- validates user input
-- updates balances safely
-- updates total deposits consistently
-- prevents invalid deposit amounts
+If deposit limits are security-critical, this could result in unauthorized
+state modifications.
 
 Proof of Concept:
 
-                1. Deploy contract
+1. Developer creates a new function:
 
-                2. Call:
-                    deposit(50)
+    function emergencyDeposit(uint256 amount) external {
+        addBalance(msg.sender, amount);
+        updateTotal(amount);
+    }
 
-                3. Validation succeeds
+2. Function forgets to call:
 
-                4. Balance increases by 50
+    validateAmount(amount);
 
-                5. totalDeposits increases by 50
+3. Attacker calls:
 
-                6. Call:
-                    deposit(0)
+    emergencyDeposit(1000000);
 
-                7. Transaction reverts
+4. Deposit limit of 100 is bypassed.
 
-                8. No state changes occur
-
-                9. Call:
-                    depositWithBonus(100)
-
-               10. Validation succeeds
-
-               11. User receives 100 + 10 bonus
-
-               12. Accounting remains consistent
+5. Contract accounting becomes inconsistent with intended business rules.
 
 Root Cause:
 
-No vulnerability identified.
+Validation logic is separated from state-changing logic.
 
-Validation logic is properly executed before state-modification logic
-across all current execution paths.
+The contract depends on developers remembering to call:
+
+    validateAmount()
+
+before every balance modification.
+
+This assumption may fail as the codebase grows.
 
 Recommendation:
 
-No remediation required.
+Centralize validation inside the core state-changing function.
 
-Continue following the existing pattern:
+Example:
 
-                validateAmount()
-                    ->
-                addBalance()
-                    ->
-                updateTotal()
+    function depositInternal(
+        uint256 _amount
+    )
+        internal
+    {
+        validateAmount(_amount);
 
-This maintains clear execution flow and proper validation enforcement.
+        addBalance(
+            msg.sender,
+            _amount
+        );
 
+        updateTotal(_amount);
+    }
+
+This guarantees all execution paths enforce validation before modifying state.
 */
+
+// Patched code
+contract FunctionExecutionChainingPatched {
+
+    mapping(address => uint256) public balances;
+
+    uint256 public totalDeposits;
+
+    uint256 public constant BONUS = 10;
+
+    function deposit(
+        uint256 _amount
+    )
+        external
+    {
+        validateAmount(_amount);
+
+        addBalance(
+            msg.sender,
+            _amount
+        );
+
+        updateTotal(_amount);
+    }
+
+    function validateAmount(
+        uint256 _amount
+    )
+        internal
+        pure
+    {
+        require(
+            _amount > 0,
+            "Amount must be > 0"
+        );
+
+        require(
+            _amount <= 100,
+            "Amount too large"
+        );
+    }
+
+    function addBalance(
+        address _user,
+        uint256 _amount
+    )
+        internal
+    {
+        balances[_user] += _amount;
+    }
+
+    function updateTotal(
+        uint256 _amount
+    )
+        internal
+    {
+        totalDeposits += _amount;
+    }
+
+    function depositInternal(
+        uint256 _amount
+    )
+        internal
+    {
+        validateAmount(_amount);
+
+        addBalance(
+            msg.sender,
+            _amount
+        );
+
+        updateTotal(_amount);
+    }
+
+    /*
+        PATCHED
+        Bonus accounted globally.
+    */
+    function depositWithBonus(
+        uint256 _amount
+    )
+        external
+    {
+        depositInternal(_amount);
+
+        addBalance(
+            msg.sender,
+            BONUS
+        );
+
+        updateTotal(BONUS);
+    }
+}
