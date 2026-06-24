@@ -72,55 +72,23 @@ Auditors inspect:
 
 =========================================================
 */
+contract InternalFunctionFlowVul {
 
-contract InternalFunctionFlow {
-
-    /*
-        STORAGE VARIABLES
-    */
     mapping(address => uint256) public balances;
 
     uint256 public totalDeposits;
 
-    /*
-    =====================================================
-    EXTERNAL ENTRY FUNCTION
-    =====================================================
-    */
+    function deposit(uint256 _amount) external {
 
-    function deposit(
-        uint256 _amount
-    )
-        external
-    {
-
-        /*
-            STEP 1:
-            Validate input using internal function.
-        */
         _validateAmount(_amount);
 
-        /*
-            STEP 2:
-            Update balance using internal function.
-        */
         _updateBalance(
             msg.sender,
             _amount
         );
 
-        /*
-            STEP 3:
-            Update global state.
-        */
         totalDeposits += _amount;
     }
-
-    /*
-    =====================================================
-    INTERNAL VALIDATION FUNCTION
-    =====================================================
-    */
 
     function _validateAmount(
         uint256 _amount
@@ -128,10 +96,6 @@ contract InternalFunctionFlow {
         internal
         pure
     {
-
-        /*
-            Internal require check.
-        */
         require(
             _amount > 0,
             "Amount must be > 0"
@@ -143,30 +107,14 @@ contract InternalFunctionFlow {
         );
     }
 
-    /*
-    =====================================================
-    INTERNAL STATE UPDATE FUNCTION
-    =====================================================
-    */
-
     function _updateBalance(
         address _user,
         uint256 _amount
     )
         internal
     {
-
-        /*
-            Internal storage update.
-        */
         balances[_user] += _amount;
     }
-
-    /*
-    =====================================================
-    INTERNAL CALCULATION FUNCTION
-    =====================================================
-    */
 
     function _calculateBonus(
         uint256 _amount
@@ -175,39 +123,29 @@ contract InternalFunctionFlow {
         pure
         returns (uint256)
     {
-
-        /*
-            Bonus = 10%
-        */
         return (_amount * 10) / 100;
     }
 
     /*
-    =====================================================
-    EXTERNAL FUNCTION USING INTERNAL HELPER
-    =====================================================
-    */
+        VULNERABLE
 
+        Validation checks only _amount.
+
+        Final credited amount becomes:
+        _amount + bonus
+
+        Which may violate intended limits.
+    */
     function depositWithBonus(
         uint256 _amount
     )
         external
     {
-
-        /*
-            Internal validation call.
-        */
         _validateAmount(_amount);
 
-        /*
-            Internal calculation.
-        */
         uint256 bonus =
             _calculateBonus(_amount);
 
-        /*
-            Internal balance update.
-        */
         _updateBalance(
             msg.sender,
             _amount + bonus
@@ -546,80 +484,200 @@ IMPORTANT CONCEPTS LEARNED
 /*
 Audit Report
 
-Title: Centralized Validation Dependency on Internal Function
+Title: Inconsistent Validation in depositWithBonus()
 
-Severity: Informational because future functions may accidentally
-bypass validation logic.
+Severity: Medium
 
 Location:
 Contract: InternalFunctionFlow
-Functions:
-    _validateAmount()
-    deposit()
-    depositWithBonus()
+Function: depositWithBonus()
 
 Vulnerability Description:
 
-The contract relies on a shared internal validation function
-to enforce deposit limits.
+The depositWithBonus() function validates only the
+original _amount parameter through the internal
+_validateAmount() function.
 
-Current execution paths correctly call:
+However, after validation, the contract calculates
+a bonus and credits:
 
-    _validateAmount(_amount);
+```
+_amount + bonus
+```
 
-before updating balances.
+to the user's balance.
 
-However, future developers may introduce new deposit-related
-functions that call _updateBalance() directly without first
-calling _validateAmount().
+As a result, the final credited amount may exceed
+the maximum value enforced by validation logic.
 
-This could result in inconsistent validation across execution
-paths.
+This creates inconsistent business-rule enforcement
+between validated input and actual state updates.
 
 Impact:
 
-No immediate security impact exists.
+A user can receive a balance increase larger than
+the protocol's intended maximum deposit amount.
 
-However, future code modifications may:
+If deposit limits are security-critical or used for:
 
-- bypass amount limits
-- bypass zero-value checks
-- create inconsistent accounting behavior
+* reward calculations
+* governance power
+* staking limits
+* protocol accounting
+
+then users may gain unintended advantages.
 
 Proof of Concept:
 
-Current implementation:
+1. Deploy contract
 
-    deposit()
-        -> _validateAmount()
-        -> _updateBalance()
+2. User calls:
 
-    depositWithBonus()
-        -> _validateAmount()
-        -> _updateBalance()
+   depositWithBonus(100)
 
-No vulnerable execution path currently exists.
+3. Internal validation executes:
 
-Risk appears only if future functions directly invoke:
+   _validateAmount(100)
 
-    _updateBalance()
+4. Validation passes because:
 
-without validation.
+   100 <= 100
+
+5. Bonus calculated:
+
+   bonus = 10
+
+6. User credited:
+
+   100 + 10 = 110
+
+7. Final credited amount exceeds the validated limit.
 
 Root Cause:
 
-Validation and state modification are separated into
-independent internal functions.
+Validation occurs before bonus calculation.
 
-The state-update helper does not enforce validation
-requirements itself.
+The contract validates only the user-provided input
+and fails to validate the final amount written to
+storage.
 
 Recommendation:
 
-Document validation requirements clearly.
+Validate the final credited amount before updating
+balances.
 
-Consider validating inside the state-changing helper
-or ensuring all external entry points perform validation
-before calling internal storage update functions.
+Example:
+
+```
+uint256 bonus =
+    _calculateBonus(_amount);
+
+uint256 finalAmount =
+    _amount + bonus;
+
+require(
+    finalAmount <= 100,
+    "Amount too large"
+);
+
+_updateBalance(
+    msg.sender,
+    finalAmount
+);
+```
+
+Ensure all internal execution paths enforce the
+same business rules and limits.
 
 */
+//Patched code
+contract InternalFunctionFlow {
+
+    error InvalidAmount();
+    error AmountTooLarge();
+
+    mapping(address => uint256) public balances;
+
+    uint256 public totalDeposits;
+
+    uint256 public constant MAX_CREDIT = 100;
+
+    function deposit(
+        uint256 _amount
+    )
+        external
+    {
+        _validateAmount(_amount);
+
+        _updateBalance(
+            msg.sender,
+            _amount
+        );
+
+        totalDeposits += _amount;
+    }
+
+    function _validateAmount(
+        uint256 _amount
+    )
+        internal
+        pure
+    {
+        if (_amount == 0) {
+            revert InvalidAmount();
+        }
+
+        if (_amount > 100) {
+            revert AmountTooLarge();
+        }
+    }
+
+    function _updateBalance(
+        address _user,
+        uint256 _amount
+    )
+        internal
+    {
+        balances[_user] += _amount;
+    }
+
+    function _calculateBonus(
+        uint256 _amount
+    )
+        internal
+        pure
+        returns (uint256)
+    {
+        return (_amount * 10) / 100;
+    }
+
+    function depositWithBonus(
+        uint256 _amount
+    )
+        external
+    {
+        _validateAmount(_amount);
+
+        uint256 bonus =
+            _calculateBonus(_amount);
+
+        uint256 finalAmount =
+            _amount + bonus;
+
+        /*
+            Validate final credited value.
+        */
+        if (
+            finalAmount > MAX_CREDIT
+        ) {
+            revert AmountTooLarge();
+        }
+
+        _updateBalance(
+            msg.sender,
+            finalAmount
+        );
+
+        totalDeposits += finalAmount;
+    }
+}
