@@ -11,21 +11,6 @@
 				"type": "constructor"
 			},
 			{
-				"inputs": [],
-				"name": "BlacklistedUser",
-				"type": "error"
-			},
-			{
-				"inputs": [],
-				"name": "ContractPaused",
-				"type": "error"
-			},
-			{
-				"inputs": [],
-				"name": "NotOwner",
-				"type": "error"
-			},
-			{
 				"inputs": [
 					{
 						"internalType": "address",
@@ -154,7 +139,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"prac40.sol": "NestedIfConditions"
+			"prac40.sol": "NestedIfConditionsVul"
 		},
 		"evmVersion": "osaka",
 		"libraries": {},

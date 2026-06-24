@@ -65,131 +65,40 @@ Auditors inspect:
 
 =========================================================
 */
+contract NestedIfConditionsVul {
 
-contract NestedIfConditions {
-
-    /*
-        OWNER ADDRESS
-    */
     address public owner;
 
-    /*
-        USER SCORES
-    */
     mapping(address => uint256) public scores;
 
-    /*
-        USER LEVELS
-    */
     mapping(address => string) public levels;
 
-    /*
-        CONSTRUCTOR
-    */
-    constructor() {
+    mapping(address => bool) public vipUsers;
 
+    mapping(address => bool) public blacklisted;
+
+    bool public paused;
+
+    constructor() {
         owner = msg.sender;
     }
-
-    /*
-    =====================================================
-    NESTED IF LOGIC
-    =====================================================
-    */
-
-    function evaluateUser(
-        uint256 _score,
-        bool _premium
-    )
-        external
-    {
-
-        /*
-            FIRST BRANCH
-
-            Check minimum score.
-        */
-        if (_score >= 50) {
-
-            /*
-                SECOND BRANCH
-
-                Check premium status.
-            */
-            if (_premium == true) {
-
-                /*
-                    THIRD BRANCH
-
-                    Check elite score.
-                */
-                if (_score >= 90) {
-
-                    levels[msg.sender] =
-                        "Elite Premium";
-
-                } else {
-
-                    levels[msg.sender] =
-                        "Premium";
-                }
-
-            } else {
-
-                /*
-                    NON-PREMIUM USER
-                */
-                levels[msg.sender] =
-                    "Standard";
-            }
-
-            /*
-                SAVE SCORE
-            */
-            scores[msg.sender] = _score;
-
-        } else {
-
-            /*
-                LOW SCORE BRANCH
-            */
-            levels[msg.sender] =
-                "Rejected";
-        }
-    }
-
-    /*
-    =====================================================
-    OWNER BONUS FUNCTION
-    =====================================================
-    */
 
     function ownerBonus(
         address _user
     )
         external
     {
-
         /*
-            FIRST CONDITION:
-            owner check
+            VULNERABILITY:
+
+            Missing owner validation.
         */
-        if (msg.sender == owner) {
 
-            /*
-                SECOND CONDITION:
-                user must exist
-            */
-            if (scores[_user] > 0) {
+        if (scores[_user] > 0) {
 
-                /*
-                    THIRD CONDITION:
-                    high score required
-                */
-                if (scores[_user] >= 80) {
+            if (scores[_user] >= 80) {
 
-                    scores[_user] += 20;
-                }
+                scores[_user] += 20;
             }
         }
     }
@@ -538,9 +447,10 @@ IMPORTANT CONCEPTS LEARNED
 /*
 Audit Report
 
-Title: Silent Failure in ownerBonus() Access Control
+Title: Missing Access Control in ownerBonus()
 
-Severity: Low
+Severity: Medium because unauthorized users can
+modify protocol state by granting score bonuses.
 
 Location:
 Contract: NestedIfConditions
@@ -548,84 +458,142 @@ Function: ownerBonus()
 
 Vulnerability Description:
 
-The ownerBonus() function uses nested if-statements for access control
-instead of explicit validation using require().
+The ownerBonus() function performs privileged score
+modifications but does not properly restrict access
+to authorized users.
 
-    if (msg.sender == owner) {
-        ...
-    }
+The function relies only on nested score checks and
+does not verify that the caller is the contract owner.
 
-When a non-owner calls the function, execution silently exits without
-reverting.
-
-This behavior may mislead users, integrators, or frontend applications
-into believing the operation succeeded when no action was performed.
+As a result, any external user can execute the bonus
+logic and alter user scores.
 
 Impact:
 
-- Lack of explicit authorization enforcement
-- Poor user experience
-- Difficult integration debugging
-- Reduced auditability and code clarity
+An attacker can:
 
-No unauthorized state modification is possible because the bonus logic
-remains protected by the owner check.
+- modify user scores
+- grant unauthorized bonuses
+- manipulate level calculations
+- corrupt protocol state
+
+If scores influence rewards, governance rights,
+staking benefits, or user privileges, the impact
+could become significant.
 
 Proof of Concept:
 
 1. Deploy contract
 
-2. User calls:
-   evaluateUser(90, true)
+2. User Alice obtains score:
 
-3. Switch to a non-owner account
+   scores[Alice] = 85
 
-4. Call:
-   ownerBonus(user)
+3. Attacker calls:
 
-5. Transaction succeeds
+   ownerBonus(Alice)
 
-6. Check:
-   scores(user)
+4. Nested conditions pass:
 
-7. Score remains unchanged
+   scores[Alice] > 0
+   scores[Alice] >= 80
 
-Observe:
-The transaction does not revert even though the caller is not authorized.
+5. Contract executes:
+
+   scores[Alice] += 20
+
+6. Final score:
+
+   105
 
 Root Cause:
 
-Authorization is implemented using nested if-statements rather than
-explicit require() validation.
+The function contains nested business-logic checks
+but lacks authorization validation.
 
-The function silently skips execution instead of rejecting unauthorized
-calls.
+No owner verification exists before executing
+privileged state updates.
 
 Recommendation:
 
-Replace the access-control condition with an explicit require() check.
+Add explicit access control before executing bonus
+logic.
 
 Example:
 
-    function ownerBonus(address _user) external {
-        require(
-            msg.sender == owner,
-            "Not owner"
-        );
+require(
+    msg.sender == owner,
+    "Not owner"
+);
 
-        require(
-            scores[_user] > 0,
-            "No score"
-        );
+Additionally consider:
 
-        require(
-            scores[_user] >= 80,
-            "Score too low"
-        );
+- pause protection
+- blacklist validation
+- custom errors
 
-        scores[_user] += 20;
+Follow the pattern:
+
+Checks -> Effects -> Interactions
+
+to ensure all execution paths remain secure
+*/
+
+//Patched code
+contract NestedIfConditions {
+
+    error NotOwner();
+    error ContractPaused();
+    error BlacklistedUser();
+
+    address public owner;
+
+    mapping(address => uint256) public scores;
+
+    mapping(address => string) public levels;
+
+    mapping(address => bool) public vipUsers;
+
+    mapping(address => bool) public blacklisted;
+
+    bool public paused;
+
+    constructor() {
+        owner = msg.sender;
     }
 
-This provides clear authorization enforcement and improves
-auditability.
-*/
+    function ownerBonus(
+        address _user
+    )
+        external
+    {
+        /*
+            CHECK #1
+        */
+        if (paused) {
+            revert ContractPaused();
+        }
+
+        /*
+            CHECK #2
+        */
+        if (msg.sender != owner) {
+            revert NotOwner();
+        }
+
+        /*
+            CHECK #3
+        */
+        if (blacklisted[_user]) {
+            revert BlacklistedUser();
+        }
+
+        /*
+            EFFECTS
+        */
+        if (scores[_user] >= 80) {
+
+            scores[_user] += 20;
+        }
+    }
+}
