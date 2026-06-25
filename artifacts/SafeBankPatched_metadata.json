@@ -84,7 +84,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"prac58.sol": "SafeBank"
+			"prac58.sol": "SafeBankPatched"
 		},
 		"evmVersion": "osaka",
 		"libraries": {},

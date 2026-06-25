@@ -76,211 +76,54 @@ Auditors inspect:
 SAFE CONTRACT
 =========================================================
 */
-
 contract SafeBank {
 
-    /*
-        USER BALANCES
-    */
     mapping(address => uint256) public balances;
 
-    /*
-        TRACK TOTAL ETH
-    */
     uint256 public totalDeposits;
-
-    /*
-    =====================================================
-    DEPOSIT ETH
-    =====================================================
-    */
 
     function deposit()
         external
         payable
     {
-
-        /*
-            Store user balance.
-        */
         balances[msg.sender] += msg.value;
-
-        /*
-            Update global accounting.
-        */
         totalDeposits += msg.value;
     }
 
     /*
-    =====================================================
-    SAFE WITHDRAW
-    =====================================================
-
-    Follows:
-    Checks -> Effects -> Interactions
+        CEI is used correctly,
+        but no reentrancy guard exists.
     */
-
     function withdraw(
         uint256 _amount
     )
         external
     {
-
-        /*
-        =================================================
-        CHECKS
-        =================================================
-
-        Validate user balance FIRST.
-        */
-
         require(
             balances[msg.sender] >= _amount,
             "Insufficient balance"
         );
 
-        /*
-        =================================================
-        EFFECTS
-        =================================================
-
-        Update storage BEFORE external call.
-        */
-
         balances[msg.sender] -= _amount;
-
         totalDeposits -= _amount;
-
-        /*
-        =================================================
-        INTERACTIONS
-        =================================================
-
-        External call happens LAST.
-        */
 
         (bool success, ) =
             payable(msg.sender).call{
                 value: _amount
             }("");
 
-        /*
-            Ensure ETH transfer succeeded.
-        */
         require(
             success,
             "ETH transfer failed"
         );
     }
 
-    /*
-    =====================================================
-    CHECK CONTRACT BALANCE
-    =====================================================
-    */
-
     function contractBalance()
         external
         view
         returns (uint256)
     {
-
         return address(this).balance;
-    }
-}
-
-/*
-=========================================================
-MALICIOUS TEST CONTRACT
-=========================================================
-*/
-
-contract ReentryTester {
-
-    /*
-        TARGET SAFE CONTRACT
-    */
-    SafeBank public target;
-
-    /*
-        TRACK REENTRY ATTEMPTS
-    */
-    uint256 public attackCounter;
-
-    /*
-        CONSTRUCTOR
-    */
-    constructor(address _target)
-    {
-
-        target = SafeBank(_target);
-    }
-
-    /*
-    =====================================================
-    DEPOSIT INTO TARGET
-    =====================================================
-    */
-
-    function depositToTarget()
-        external
-        payable
-    {
-
-        target.deposit{value: msg.value}();
-    }
-
-    /*
-    =====================================================
-    START WITHDRAW
-    =====================================================
-    */
-
-    function attack()
-        external
-    {
-
-        /*
-            Attempt withdrawal.
-        */
-        target.withdraw(1 ether);
-    }
-
-    /*
-    =====================================================
-    RECEIVE FUNCTION
-    =====================================================
-
-    Attempt reentrancy attack.
-    */
-
-    receive()
-        external
-        payable
-    {
-
-        attackCounter++;
-
-        /*
-            Try reentering target.
-        */
-        if (
-            address(target).balance >= 1 ether
-        ) {
-
-            /*
-                THIS FAILS SAFELY
-
-                Why?
-
-                Balance already reduced.
-            */
-            try target.withdraw(1 ether) {
-
-            } catch {
-
-            }
-        }
     }
 }
 
@@ -615,3 +458,161 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+/*
+Audit Report
+
+Title: Missing Reentrancy Guard Protection
+
+Severity: Low because the contract currently follows
+the Checks-Effects-Interactions (CEI) pattern and is
+not directly vulnerable to the demonstrated reentrancy
+attack. However, future modifications may introduce
+reentrancy risks.
+
+Location:
+Contract: SafeBank
+Function: withdraw()
+
+Vulnerability Description:
+
+The withdraw() function performs an external ETH
+transfer using call().
+
+Although balances are updated before the external
+interaction, the contract does not implement a
+reentrancy guard.
+
+The current implementation is resistant to the
+demonstrated attack, but future upgrades or new
+functions interacting with shared state could create
+cross-function reentrancy opportunities.
+
+Impact:
+
+No immediate fund loss exists in the current version.
+
+Potential future consequences include:
+
+- cross-function reentrancy
+- unexpected recursive execution
+- accounting inconsistencies
+- increased attack surface
+
+Proof of Concept:
+
+1. Deploy SafeBank
+
+2. Deploy ReentryTester
+
+3. Deposit 1 ETH
+
+4. Trigger attack()
+
+5. Reentry attempt fails because:
+
+       balances[msg.sender] == 0
+
+6. Contract remains secure
+
+7. However, no explicit reentrancy protection
+   exists if future functionality is added
+
+Root Cause:
+
+The contract relies solely on CEI ordering and
+does not implement a dedicated reentrancy lock.
+
+Recommendation:
+
+Implement a reentrancy guard as a defense-in-depth
+measure.
+
+Example:
+
+    bool private locked;
+
+    modifier nonReentrant() {
+        require(
+            !locked,
+            "Reentrancy detected"
+        );
+
+        locked = true;
+        _;
+        locked = false;
+    }
+
+Apply the modifier to all functions that perform
+external interactions.
+
+Status:
+
+Fixed in patched implementation.
+
+*/
+
+// Patched code
+contract SafeBankPatched {
+
+    mapping(address => uint256) public balances;
+
+    uint256 public totalDeposits;
+
+    bool private locked;
+
+    modifier nonReentrant() {
+        require(
+            !locked,
+            "Reentrancy detected"
+        );
+
+        locked = true;
+        _;
+        locked = false;
+    }
+
+    function deposit()
+        external
+        payable
+    {
+        balances[msg.sender] += msg.value;
+        totalDeposits += msg.value;
+    }
+
+    /*
+        Defense-in-depth:
+        CEI + Reentrancy Guard
+    */
+    function withdraw(
+        uint256 _amount
+    )
+        external
+        nonReentrant
+    {
+        require(
+            balances[msg.sender] >= _amount,
+            "Insufficient balance"
+        );
+
+        balances[msg.sender] -= _amount;
+        totalDeposits -= _amount;
+
+        (bool success, ) =
+            payable(msg.sender).call{
+                value: _amount
+            }("");
+
+        require(
+            success,
+            "ETH transfer failed"
+        );
+    }
+
+    function contractBalance()
+        external
+        view
+        returns (uint256)
+    {
+        return address(this).balance;
+    }
+}
