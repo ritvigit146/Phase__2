@@ -1,0 +1,53 @@
+{
+	"compiler": {
+		"version": "0.8.34+commit.80d5c536"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [],
+				"name": "alwaysFail",
+				"outputs": [],
+				"stateMutability": "pure",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"prac59.sol": "Rejector"
+		},
+		"evmVersion": "osaka",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"prac59.sol": {
+			"keccak256": "0x571038fefa93510a6e663134f700304916dfc3c24ec26af967ad03c4b8ced7da",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://864dc1a1a3c9b6e8f474026f5394423e605ea123c9b5f0085e5fcb7cf7987955",
+				"dweb:/ipfs/QmNVNm4BRXp3AH6uMjefvnfNqePpiPnQV4yVbBpLDH6ZYH"
+			]
+		}
+	},
+	"version": 1
+}

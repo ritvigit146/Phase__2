@@ -1,0 +1,72 @@
+{
+	"compiler": {
+		"version": "0.8.34+commit.80d5c536"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [],
+				"name": "localCounter",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_target",
+						"type": "address"
+					}
+				],
+				"name": "triggerFailure",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"prac59.sol": "ExternalCallHandlerVul"
+		},
+		"evmVersion": "osaka",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"prac59.sol": {
+			"keccak256": "0x5e35b185df390ac132e95fceca06c780c56a848d497ab07bdecf45890149201c",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://8a6a98b5c32399d847cbdfd07cf2d5b5d5786c7f2ee091a5a43e849cd3694f1d",
+				"dweb:/ipfs/QmY56sqMU4DvNWJDkreT89eGauP11QuQM9zFhMyzTnKXrW"
+			]
+		}
+	},
+	"version": 1
+}
