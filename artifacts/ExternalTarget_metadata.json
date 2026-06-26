@@ -1,0 +1,79 @@
+{
+	"compiler": {
+		"version": "0.8.34+commit.80d5c536"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [],
+				"name": "executionCounter",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "lastCaller",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "targetFunction",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"prac65.sol": "ExternalTarget"
+		},
+		"evmVersion": "osaka",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"prac65.sol": {
+			"keccak256": "0x5da6ff81bf7f3b1cf4e6544ea8d625ad4ba8d35992b9967eccda83a8259c5ac9",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://33dc5cb440ed87d5ed3782a0916551f6b8b9eb045ef7ac2e58d1193c4133732c",
+				"dweb:/ipfs/QmNguDjvvrhkCzEUMLA5KtxMMFFF3TaEaVcuq5w8LAFgBq"
+			]
+		}
+	},
+	"version": 1
+}
