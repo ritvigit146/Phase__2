@@ -67,111 +67,40 @@ Auditors inspect:
 CALDATA CONTRACT
 =========================================================
 */
+contract CalldataGasVul {
 
-contract CalldataGas {
-
-    /*
-        STORE PROCESSED SUM
-    */
     uint256 public totalSum;
-
-    /*
-        TRACK ELEMENT COUNT
-    */
     uint256 public totalElements;
 
     /*
-    =====================================================
-    PROCESS HUGE CALDATA ARRAY
-    =====================================================
+        VULNERABILITY:
+        - No limit on calldata array size.
+        - Storage write inside loop.
+        - Large arrays can consume excessive gas
+          and cause transaction failure (Gas DoS).
     */
-
     function processCalldataArray(
         uint256[] calldata data
     )
         external
     {
-
-        /*
-            Local variable in stack.
-        */
         uint256 sum = 0;
 
-        /*
-        =================================================
-        LOOP OVER CALDATA ARRAY
-        =================================================
-        */
-
-        for (
-            uint256 i = 0;
-            i < data.length;
-            i++
-        ) {
-
-            /*
-                READ FROM CALDATA
-
-                Cheap read-only access.
-            */
+        for (uint256 i = 0; i < data.length; i++) {
             sum += data[i];
 
-            /*
-                Storage update per iteration.
-                (expensive part)
-            */
+            // Expensive storage write every iteration
             totalElements++;
         }
 
-        /*
-            One final storage write.
-        */
         totalSum = sum;
     }
-
-    /*
-    =====================================================
-    COMPARE MEMORY VERSION
-    =====================================================
-    */
-
-    function processMemoryArray(
-        uint256[] memory data
-    )
-        public
-        pure
-        returns (uint256)
-    {
-
-        uint256 sum = 0;
-
-        for (
-            uint256 i = 0;
-            i < data.length;
-            i++
-        ) {
-
-            /*
-                Memory access.
-            */
-            sum += data[i];
-        }
-
-        return sum;
-    }
-
-    /*
-    =====================================================
-    GET TOTAL ELEMENTS
-    =====================================================
-    */
 
     function getTotalElements()
         external
         view
         returns (uint256)
     {
-
         return totalElements;
     }
 }
@@ -508,3 +437,121 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+/*
+Audit Report
+
+Title: Unbounded Calldata Array Can Cause Gas Denial of Service
+
+Severity: Medium because a user can submit an extremely large array,
+causing excessive gas consumption and making the function fail.
+
+Location:
+Contract: CalldataGasVul
+Function: processCalldataArray()
+
+Vulnerability Description:
+
+The processCalldataArray() function accepts an array of arbitrary
+length without validating its size.
+
+The function also performs a storage write (totalElements++)
+during every loop iteration.
+
+As the input array grows larger, gas consumption increases linearly.
+For sufficiently large inputs, the transaction can exceed the block
+gas limit and revert.
+
+Impact:
+
+An attacker can submit a very large calldata array, causing:
+
+- Out-of-gas transaction failures
+- Denial of Service (DoS)
+- Excessive execution costs
+- Poor scalability
+- Inefficient storage updates
+
+Proof of Concept:
+
+1. Deploy CalldataGasVul.
+2. Create a uint256 array containing thousands of elements.
+3. Call:
+
+   processCalldataArray(largeArray)
+
+4. Observe:
+
+   - Extremely high gas usage.
+   - Transaction may revert due to gas exhaustion.
+
+Root Cause:
+
+The function has no upper bound on the calldata array size and
+updates storage during every iteration of the loop.
+
+Recommendation:
+
+- Limit the maximum array size using require().
+- Avoid storage writes inside loops.
+- Accumulate values in local variables.
+- Perform a single storage update after the loop.
+
+Example:
+
+require(data.length <= 500, "Batch size exceeds limit");
+
+uint256 processed = data.length;
+
+for (...) {
+    sum += data[i];
+}
+
+totalSum = sum;
+totalElements += processed;
+
+*/
+
+//Patched code
+contract CalldataGas {
+
+    uint256 public totalSum;
+    uint256 public totalElements;
+
+    // Maximum safe batch size
+    uint256 public constant MAX_BATCH_SIZE = 500;
+
+    /*
+        PATCHES:
+        1. Limit calldata array size.
+        2. Avoid storage writes inside loop.
+        3. Update storage once after processing.
+    */
+    function processCalldataArray(
+        uint256[] calldata data
+    )
+        external
+    {
+        require(
+            data.length <= MAX_BATCH_SIZE,
+            "Batch size exceeds limit"
+        );
+
+        uint256 sum = 0;
+
+        for (uint256 i = 0; i < data.length; i++) {
+            sum += data[i];
+        }
+
+        // Single storage writes
+        totalSum = sum;
+        totalElements += data.length;
+    }
+
+    function getTotalElements()
+        external
+        view
+        returns (uint256)
+    {
+        return totalElements;
+    }
+}
