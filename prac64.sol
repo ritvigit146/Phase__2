@@ -105,7 +105,12 @@ contract ETHSenderVul {
         payable
     {
         // ETH transfer attempted
-        _receiver.call{value: msg.value}("");
+        (bool success, ) = _receiver.call{value: msg.value}("");
+
+// Intentionally ignore success
+success;
+
+          totalSent += msg.value;
 
         // VULNERABILITY:
         // Execution continues even if transfer failed.
