@@ -74,139 +74,28 @@ Auditors inspect:
 NON-PAYABLE CONTRACT
 =========================================================
 */
+contract NonPayableReceiverVul {
 
-contract NonPayableReceiver {
-
-    /*
-        TRACK EXECUTION
-    */
     uint256 public counter;
 
-    /*
-    =====================================================
-    NORMAL FUNCTION
-    =====================================================
-
-    NOT payable.
-    */
-
-    function increment()
-        external
-    {
-
+    function increment() external {
         counter++;
     }
 
-    /*
-    =====================================================
-    IMPORTANT
-    =====================================================
-
-    NO receive()
-    NO payable fallback()
-
-    Therefore:
-    direct ETH transfers fail.
-    */
+    // No receive() or payable fallback()
 }
 
-/*
-=========================================================
-PAYABLE CONTRACT
-=========================================================
-*/
+contract ETHSenderVul {
 
-contract PayableReceiver {
-
-    /*
-        TRACK RECEIVED ETH
-    */
-    uint256 public receivedAmount;
-
-    /*
-    =====================================================
-    RECEIVE ETH
-    =====================================================
-    */
-
-    receive()
-        external
-        payable
-    {
-
-        /*
-            Store received ETH amount.
-        */
-        receivedAmount += msg.value;
-    }
-}
-
-/*
-=========================================================
-SENDER CONTRACT
-=========================================================
-*/
-
-contract ETHSender {
-
-    /*
-        TRACK LAST RESULT
-    */
     bool public lastSuccess;
-
-    /*
-        TRACK TOTAL SENT
-    */
     uint256 public totalSent;
 
     /*
     =====================================================
-    SEND ETH SAFELY
-    =====================================================
-    */
-
-    function sendETH(
-        address payable _receiver
-    )
-        external
-        payable
-    {
-
-        /*
-            Attempt ETH transfer using call().
-        */
-        (bool success, ) =
-            _receiver.call{
-                value: msg.value
-            }("");
-
-        /*
-            Save result.
-        */
-        lastSuccess = success;
-
-        /*
-            SAFE HANDLING.
-
-            Revert if transfer failed.
-        */
-        require(
-            success,
-            "ETH transfer failed"
-        );
-
-        /*
-            Update accounting ONLY after success.
-        */
-        totalSent += msg.value;
-    }
-
-    /*
-    =====================================================
-    DANGEROUS SEND
+    VULNERABLE FUNCTION
     =====================================================
 
-    Ignores success boolean.
+    The return value of call() is ignored.
     */
 
     function dangerousSend(
@@ -215,34 +104,20 @@ contract ETHSender {
         external
         payable
     {
+        // ETH transfer attempted
+        _receiver.call{value: msg.value}("");
 
-        /*
-            Attempt ETH transfer.
-        */
-        _receiver.call{
-            value: msg.value
-        }("");
-
-        /*
-            DANGEROUS:
-            Execution continues even if transfer failed.
-        */
+        // VULNERABILITY:
+        // Execution continues even if transfer failed.
 
         totalSent += msg.value;
     }
-
-    /*
-    =====================================================
-    CHECK CONTRACT BALANCE
-    =====================================================
-    */
 
     function contractBalance()
         external
         view
         returns (uint256)
     {
-
         return address(this).balance;
     }
 }
@@ -680,3 +555,124 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
+/*
+Audit Report
+
+Title: Unchecked Return Value of Low-Level ETH Transfer
+
+Severity: Medium because the contract updates its internal accounting
+even when the ETH transfer fails, resulting in inconsistent protocol state.
+
+Location: Contract: ETHSenderVul
+Function: dangerousSend()
+
+Vulnerability Description:
+
+The dangerousSend() function performs a low-level ETH transfer using
+call{value: msg.value}("") but ignores the returned success value.
+
+If the recipient contract rejects the ETH transfer (for example, because
+it does not implement a receive() function or has a non-payable fallback()),
+the call returns false instead of reverting.
+
+Since the return value is ignored, execution continues and totalSent is
+updated even though the ETH transfer never occurred.
+
+Impact:
+
+An attacker can intentionally send ETH to a contract that cannot receive ETH,
+causing the transfer to fail while the sender contract records it as
+successful.
+
+This may result in:
+
+- Incorrect accounting
+- False payment records
+- Inconsistent contract state
+- Broken protocol logic
+- Potential financial losses if other functions rely on totalSent
+
+Proof of Concept:
+
+1. Deploy NonPayableReceiver.
+2. Deploy ETHSenderVul.
+3. Call:
+
+    dangerousSend(NonPayableReceiver)
+
+   with 1 ETH.
+
+4. The low-level call fails because the receiver cannot accept ETH.
+5. The success value is ignored.
+6. Execution continues normally.
+7. totalSent increases by 1 ETH.
+8. The ETH remains in ETHSenderVul.
+9. Internal accounting incorrectly indicates that the transfer succeeded.
+
+Root Cause:
+
+The function ignores the boolean success value returned by the low-level
+call() operation and assumes the ETH transfer was successful.
+
+Recommendation:
+
+Always verify the success value returned by low-level calls before updating
+contract state.
+
+Example:
+
+(bool success, ) = _receiver.call{value: msg.value}("");
+
+require(success, "ETH transfer failed");
+
+totalSent += msg.value;
+
+This ensures that accounting is only updated after a successful ETH transfer.
+
+*/
+
+// Patched code
+contract PayableReceiver {
+
+    uint256 public receivedAmount;
+
+    receive() external payable {
+        receivedAmount += msg.value;
+    }
+}
+
+contract ETHSenderPatched {
+
+    bool public lastSuccess;
+    uint256 public totalSent;
+
+    /*
+    =====================================================
+    SECURE FUNCTION
+    =====================================================
+    */
+
+    function safeSend(
+        address payable _receiver
+    )
+        external
+        payable
+    {
+        (bool success, ) = _receiver.call{value: msg.value}("");
+
+        lastSuccess = success;
+
+        require(success, "ETH transfer failed");
+
+        // Accounting updated only after successful transfer
+        totalSent += msg.value;
+    }
+
+    function contractBalance()
+        external
+        view
+        returns (uint256)
+    {
+        return address(this).balance;
+    }
+}

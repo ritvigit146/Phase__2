@@ -1,0 +1,63 @@
+{
+	"compiler": {
+		"version": "0.8.34+commit.80d5c536"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [],
+				"name": "receivedAmount",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"stateMutability": "payable",
+				"type": "receive"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"prac64.sol": "PayableReceiver"
+		},
+		"evmVersion": "osaka",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"prac64.sol": {
+			"keccak256": "0xde78e66402174f30072ee7bfdac2df9d11fd507ade58f674810b24429d5662bd",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://9db461540d30201445f98e601768209b2e2131434a6c71ec39153f4c7285e7ae",
+				"dweb:/ipfs/QmYz4HAB4A5Nrj4AJYSxwiP37NHu7Xo5m1RgaC8UgLnxhE"
+			]
+		}
+	},
+	"version": 1
+}
