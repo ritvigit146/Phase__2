@@ -133,7 +133,10 @@ contract DangerousUncheckedCallVul {
         withdrawn[msg.sender] = true;
 
         // Vulnerable external call
-        _receiver.call{value: _amount}("");
+        (bool success, ) = _receiver.call{value: _amount}("");
+
+// Intentionally ignore success
+success;
 
         /*
             If ETH transfer fails:
