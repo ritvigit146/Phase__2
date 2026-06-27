@@ -77,7 +77,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"prac76.sol": "VulnerableBank"
+			"prac76.sol": "PatchedBank"
 		},
 		"evmVersion": "osaka",
 		"libraries": {},
