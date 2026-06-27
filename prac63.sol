@@ -85,51 +85,144 @@ Auditors inspect:
 TARGET CONTRACT
 =========================================================
 */
+
 contract DataStorage {
 
+    /*
+        STORED VALUE
+    */
     uint256 public storedNumber;
+
+    /*
+        TRACK LAST CALLER
+    */
     address public lastCaller;
 
-    function setNumber(uint256 _number) external {
+    /*
+    =====================================================
+    STORE NUMBER
+    =====================================================
+    */
+
+    function setNumber(
+        uint256 _number
+    )
+        external
+    {
+
+        /*
+            Save input.
+        */
         storedNumber = _number;
+
+        /*
+            Store msg.sender.
+
+            IMPORTANT:
+            This will become
+            calling contract address
+            during nested execution.
+        */
         lastCaller = msg.sender;
     }
 
-    function getNumber() external view returns (uint256) {
+    /*
+    =====================================================
+    READ VALUE
+    =====================================================
+    */
+
+    function getNumber()
+        external
+        view
+        returns (uint256)
+    {
+
         return storedNumber;
     }
 }
 
+/*
+=========================================================
+CALLER CONTRACT
+=========================================================
+*/
+
 contract NestedCaller {
 
+    /*
+        TARGET CONTRACT
+    */
     DataStorage public target;
 
+    /*
+        TRACK LOCAL EXECUTION
+    */
     uint256 public localCounter;
 
+    /*
+        STORE LAST READ VALUE
+    */
     uint256 public lastReadValue;
 
-    constructor(address _target) {
+    /*
+        CONSTRUCTOR
+    */
+    constructor(address _target)
+    {
 
-        require(_target != address(0), "Invalid target");
-
-        require(
-            _target.code.length > 0,
-            "Target must be deployed contract"
-        );
-
+        /*
+            Save target contract reference.
+        */
         target = DataStorage(_target);
     }
 
-    function callSetNumber(uint256 _number) external {
+    /*
+    =====================================================
+    CALL TARGET CONTRACT
+    =====================================================
+    */
 
+    function callSetNumber(
+        uint256 _number
+    )
+        external
+    {
+
+        /*
+            Local state update.
+        */
         localCounter++;
 
+        /*
+            EXTERNAL CONTRACT CALL
+
+            Execution jumps into:
+            DataStorage.setNumber()
+        */
         target.setNumber(_number);
     }
 
-    function readTargetNumber() external {
+    /*
+    =====================================================
+    READ FROM TARGET CONTRACT
+    =====================================================
+    */
 
-        lastReadValue = target.getNumber();
+    function readTargetNumber()
+        external
+    {
+
+        /*
+            Nested external read.
+        */
+        uint256 value =
+            target.getNumber();
+
+        /*
+            Save locally.
+        */
+        lastReadValue = value;
     }
 }
 
@@ -470,43 +563,72 @@ IMPORTANT CONCEPTS LEARNED
 
 =========================================================
 */
-contract NestedCaller {
+/*
+Audit Report
 
-constructor(address _target) {
-    require(_target != address(0), "Invalid target");
-    require(_target.code.length > 0, "Target is not a contract");
+Title: No Security Vulnerability Detected in Nested Contract Call Example
 
-    target = DataStorage(_target);
-}
-    constructor(address _target) {
+Severity: Informational because the contract correctly demonstrates nested
+execution and msg.sender behavior without introducing a security flaw.
 
-        require(_target != address(0), "Invalid target");
+Location:
+Contract: DataStorage
+Contract: NestedCaller
 
-        require(
-            _target.code.length > 0,
-            "Target must be a deployed contract"
-        );
+Vulnerability Description:
 
-        target = DataStorage(_target);
-    }
+No security vulnerability was identified.
 
-    /*
-        CALL TARGET CONTRACT
-    */
-    function callSetNumber(uint256 _number)
-        external
-    {
-        localCounter++;
+The contracts demonstrate how one contract calls another and how
+msg.sender changes during nested execution.
 
-        target.setNumber(_number);
-    }
+When NestedCaller calls DataStorage.setNumber(), the msg.sender inside
+DataStorage is the NestedCaller contract address, not the original user.
+This is expected Solidity behavior and not a vulnerability.
 
-    /*
-        READ TARGET VALUE
-    */
-    function readTargetNumber()
-        external
-    {
-        lastReadValue = target.getNumber();
-    }
-}
+Impact:
+
+No direct security impact.
+
+The contract functions as intended and correctly demonstrates:
+
+- Nested external calls
+- Execution context switching
+- msg.sender transitions
+- Inter-contract communication
+
+Proof of Concept:
+
+1. Deploy DataStorage.
+2. Deploy NestedCaller using the DataStorage address.
+3. Call:
+
+   callSetNumber(100)
+
+4. Observe:
+
+   - DataStorage.storedNumber = 100
+   - DataStorage.lastCaller = NestedCaller contract address
+   - NestedCaller.localCounter = 1
+
+The observed behavior matches Solidity's execution model.
+
+Root Cause:
+
+No vulnerability exists.
+
+The change in msg.sender is an inherent feature of external contract
+calls in Solidity. The contract does not misuse msg.sender for
+authorization or access control.
+
+Recommendation:
+
+No security patch is required.
+
+For production contracts:
+
+- Do not assume msg.sender is always the original user after an external call.
+- Implement explicit access control where authorization is required.
+- Carefully review authentication logic in multi-contract architectures.
+
+*/
