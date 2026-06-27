@@ -9,7 +9,7 @@
 				"inputs": [
 					{
 						"internalType": "address",
-						"name": "_target",
+						"name": "_bank",
 						"type": "address"
 					}
 				],
@@ -17,28 +17,19 @@
 				"type": "constructor"
 			},
 			{
-				"inputs": [],
-				"name": "MAX_ATTACKS",
-				"outputs": [
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
+				"stateMutability": "payable",
+				"type": "fallback"
 			},
 			{
 				"inputs": [],
 				"name": "attack",
 				"outputs": [],
-				"stateMutability": "nonpayable",
+				"stateMutability": "payable",
 				"type": "function"
 			},
 			{
 				"inputs": [],
-				"name": "attackCounter",
+				"name": "attackAmount",
 				"outputs": [
 					{
 						"internalType": "uint256",
@@ -51,9 +42,41 @@
 			},
 			{
 				"inputs": [],
-				"name": "depositToTarget",
-				"outputs": [],
-				"stateMutability": "payable",
+				"name": "attacking",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "bank",
+				"outputs": [
+					{
+						"internalType": "contract IVulnerableBank",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "getBalance",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
 				"type": "function"
 			},
 			{
@@ -71,27 +94,10 @@
 			},
 			{
 				"inputs": [],
-				"name": "target",
-				"outputs": [
-					{
-						"internalType": "contract VulnerableBank",
-						"name": "",
-						"type": "address"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"inputs": [],
-				"name": "withdrawLoot",
+				"name": "withdrawStolen",
 				"outputs": [],
 				"stateMutability": "nonpayable",
 				"type": "function"
-			},
-			{
-				"stateMutability": "payable",
-				"type": "receive"
 			}
 		],
 		"devdoc": {
@@ -107,7 +113,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"prac57.sol": "ReentrancyAttacker"
+			"prac77.sol": "ReentrancyAttacker"
 		},
 		"evmVersion": "osaka",
 		"libraries": {},
@@ -121,12 +127,12 @@
 		"remappings": []
 	},
 	"sources": {
-		"prac57.sol": {
-			"keccak256": "0x6199bcb243181ffc75c32634143cf003d657cc7d0538ca6c3cc70b99183c9a9d",
+		"prac77.sol": {
+			"keccak256": "0x308f2099d997a94f77776763cf45f8ab00dd83cdc9accaa2a899a8547960ba89",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://7c61e0f1a4258a7131d535fcc842ca80140723645615cae043341812fbbc9128",
-				"dweb:/ipfs/QmcHWE3QHujy2HHyHeW3Eh56H2wK43uKXGV9uUQEL9uJnu"
+				"bzz-raw://fcff8488853e7ea06716b275b286a237c5077821ee2cd4106b768b7d44552e3e",
+				"dweb:/ipfs/QmdKpXfFiry5PK23ARzd7snWWw7eKz76GPd6sFu6pov7Uh"
 			]
 		}
 	},
