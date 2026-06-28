@@ -77,7 +77,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"prac78.sol": "VulnerableBank"
+			"prac78.sol": "SecureBank"
 		},
 		"evmVersion": "osaka",
 		"libraries": {},
