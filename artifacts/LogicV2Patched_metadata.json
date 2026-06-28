@@ -7,6 +7,19 @@
 		"abi": [
 			{
 				"inputs": [],
+				"name": "initialized",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
 				"name": "owner",
 				"outputs": [
 					{
@@ -71,7 +84,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"prac83.sol": "LogicV2"
+			"prac83.sol": "LogicV2Patched"
 		},
 		"evmVersion": "osaka",
 		"libraries": {},
