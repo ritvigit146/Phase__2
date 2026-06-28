@@ -50,7 +50,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"prac61.sol": "CallTarget"
+			"prac61.sol": "CallTargetVul"
 		},
 		"evmVersion": "osaka",
 		"libraries": {},

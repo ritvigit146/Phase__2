@@ -95,212 +95,96 @@ Auditors inspect:
 TARGET CONTRACT
 =========================================================
 */
+contract CallTargetVul {
 
-contract CallTarget {
-
-    /*
-        TRACK EXECUTIONS
-    */
     uint256 public counter;
 
-    /*
-    =====================================================
-    SUCCESS FUNCTION
-    =====================================================
-    */
-
-    function successFunction()
-        external
-    {
-
-        /*
-            Increment counter.
-        */
+    function successFunction() external {
         counter++;
     }
 
-    /*
-    =====================================================
-    FAILING FUNCTION
-    =====================================================
-    */
-
-    function failFunction()
-        external
-        pure
-    {
-
-        /*
-            Intentionally revert.
-        */
+    function failFunction() external pure {
         revert("Intentional failure");
     }
 
-    /*
-    =====================================================
-    REJECT ETH
-    =====================================================
-    */
-
-    receive()
-        external
-        payable
-    {
-
-        /*
-            Reject ETH transfers.
-        */
+    receive() external payable {
         revert("ETH rejected");
     }
 }
 
-/*
-=========================================================
-SAFE CALLER CONTRACT
-=========================================================
-*/
+contract VulnerableCallHandler {
 
-contract SafeCallHandler {
-
-    /*
-        TRACK RESULTS
-    */
     bool public lastSuccess;
-
     bytes public lastData;
-
     uint256 public executionCounter;
 
     /*
     =====================================================
-    SAFE FUNCTION CALL
+    VULNERABLE FUNCTION CALL
     =====================================================
     */
 
-    function safeFunctionCall(
-        address _target
-    )
-        external
-    {
+    function vulnerableFunctionCall(address target) external {
 
-        /*
-            Local state update.
-        */
         executionCounter++;
 
-        /*
-            Low-level external call.
-        */
         (bool success, bytes memory data) =
-            _target.call(
+            target.call(
                 abi.encodeWithSignature(
                     "successFunction()"
                 )
             );
 
-        /*
-            Store results.
-        */
+        // Stored only
         lastSuccess = success;
-
         lastData = data;
 
-        /*
-        =================================================
-        SAFE HANDLING
-        =================================================
-
-        If external call failed:
-        transaction fully reverts.
-        */
-        require(
-            success,
-            "External function call failed"
-        );
+        // Missing require(success)
+        // Execution continues even if call fails.
     }
 
     /*
     =====================================================
-    SAFE FAILING CALL
+    VULNERABLE FAILING CALL
     =====================================================
     */
 
-    function safeFailingCall(
-        address _target
-    )
-        external
-    {
+    function vulnerableFailingCall(address target) external {
 
-        /*
-            Local state update.
-        */
         executionCounter++;
 
-        /*
-            External call that fails.
-        */
         (bool success, bytes memory data) =
-            _target.call(
+            target.call(
                 abi.encodeWithSignature(
                     "failFunction()"
                 )
             );
 
-        /*
-            Save results.
-        */
         lastSuccess = success;
-
         lastData = data;
 
-        /*
-            SAFE FAILURE HANDLING.
-
-            Revert if call failed.
-        */
-        require(
-            success,
-            "External call reverted"
-        );
+        // Failure ignored
     }
 
     /*
     =====================================================
-    SAFE ETH TRANSFER
+    VULNERABLE ETH TRANSFER
     =====================================================
     */
 
-    function safeETHTransfer(
-        address payable _target
+    function vulnerableETHTransfer(
+        address payable target
     )
         external
         payable
     {
-
-        /*
-            Attempt ETH transfer.
-        */
         (bool success, bytes memory data) =
-            _target.call{
-                value: msg.value
-            }("");
+            target.call{value: msg.value}("");
 
-        /*
-            Store results.
-        */
         lastSuccess = success;
-
         lastData = data;
 
-        /*
-            SAFE CHECK.
-
-            Prevent silent ETH-transfer failure.
-        */
-        require(
-            success,
-            "ETH transfer failed"
-        );
+        // ETH transfer failure ignored
     }
 }
 
@@ -707,86 +591,221 @@ IMPORTANT CONCEPTS LEARNED
 /*
 Audit Report
 
-Title: Proper Handling of Low-Level call() Return Value
+Title: Unchecked Low-Level Call Return Value
 
-Severity: Informational
+Severity: Medium
+
+Reason:
+The contract performs low-level external calls using call() but, in the
+vulnerable implementation, does not verify whether the call succeeded.
+
+Ignoring the returned success boolean allows execution to continue even
+when the external contract reverts or rejects the call, which can leave
+the contract in an inconsistent state.
+
+If critical state changes occur before or after the unchecked call,
+accounting inconsistencies, incorrect execution flow, or fund loss may
+occur.
 
 Location:
-Contract: SafeCallHandler
+Contract: VulnerableCallHandler
+
 Functions:
-- safeFunctionCall()
-- safeFailingCall()
-- safeETHTransfer()
+- vulnerableFunctionCall()
+- vulnerableFailingCall()
+- vulnerableETHTransfer()
 
-Description:
+Vulnerability Description:
 
-The contract correctly validates the return value of every
-low-level call() operation.
+The vulnerable functions invoke external contracts using Solidity's
+low-level call().
 
-Each external interaction captures:
+call() never automatically reverts.
+
+Instead, it returns:
 
 (bool success, bytes memory data)
 
-and immediately verifies the result using:
+The vulnerable implementation stores the returned success value but
+never validates it.
 
-require(success, "...");
+As a result, if the external call fails, execution continues normally
+instead of reverting the transaction.
 
-If an external contract reverts or rejects ETH,
-the transaction also reverts, ensuring that no partial
-state changes are committed.
+This can create situations where internal state assumes an external
+operation succeeded even though it actually failed.
 
 Impact:
 
-No security impact.
+Unchecked call failures can result in:
 
-The implementation prevents:
-
-- silent external-call failures
 - inconsistent contract state
 - incorrect accounting
-- ignored ETH transfer failures
+- silent transaction failures
+- failed ETH transfers being treated as successful
+- unexpected protocol behavior
+- denial-of-service scenarios caused by ignored failures
 
-This follows Solidity security best practices for handling
-low-level calls.
+Although no direct fund theft exists in this educational example, the
+same pattern has caused serious vulnerabilities in production smart
+contracts.
 
-Observation:
+Proof of Concept:
 
-The contract also stores:
+1. Deploy CallTarget.
 
-- lastSuccess
-- lastData
+2. Deploy VulnerableCallHandler.
 
-which may be useful for debugging successful calls.
-However, if the external call fails, the subsequent
-require(success) causes the transaction to revert,
-rolling back these storage updates as well.
+3. Call:
+
+   vulnerableFailingCall(CallTarget)
+
+4. The target contract executes failFunction(), which immediately
+   reverts.
+
+5. call() returns:
+
+   success = false
+
+6. Because the contract never executes:
+
+   require(success)
+
+   execution continues normally.
+
+7. The transaction succeeds even though the external call failed.
+
+This demonstrates a silent failure.
 
 Root Cause:
 
-No vulnerability identified.
+The developer uses Solidity's low-level call() without validating the
+returned success boolean.
 
-The developer correctly validates every low-level call
-before allowing execution to continue.
+Low-level calls do not automatically revert on failure.
+
+Failure handling must be implemented explicitly by checking the success
+value.
 
 Recommendation:
 
-No security changes are required.
+Always validate the success value returned by every low-level call.
 
-Continue following this pattern for every low-level call:
+Recommended mitigations include:
+
+- execute require(success) immediately after call()
+- revert the transaction when external calls fail
+- follow the Checks-Effects-Interactions (CEI) pattern
+- use higher-level interface calls when possible
+- emit events for failed external interactions if appropriate
+- avoid ignoring returned values from call(), delegatecall(), staticcall(),
+  and send()
+
+Patched Code Example:
 
 (bool success, bytes memory data) =
-    target.call(...);
+    target.call(
+        abi.encodeWithSignature("successFunction()")
+    );
 
-require(success, "External call failed");
+lastSuccess = success;
+lastData = data;
 
-This ensures failed external interactions cannot
-leave the contract in an inconsistent state.
+require(success, "External function call failed");
 
-Conclusion:
-
-No vulnerability identified.
-
-The contract demonstrates the recommended pattern
-for safe handling of low-level external calls and ETH
-transfers.
 */
+
+// Patched code
+contract CallTarget {
+
+    uint256 public counter;
+
+    function successFunction() external {
+        counter++;
+    }
+
+    function failFunction() external pure {
+        revert("Intentional failure");
+    }
+
+    receive() external payable {
+        revert("ETH rejected");
+    }
+}
+
+contract SafeCallHandler {
+
+    bool public lastSuccess;
+    bytes public lastData;
+    uint256 public executionCounter;
+
+    /*
+    =====================================================
+    SAFE FUNCTION CALL
+    =====================================================
+    */
+
+    function safeFunctionCall(address target) external {
+
+        executionCounter++;
+
+        (bool success, bytes memory data) =
+            target.call(
+                abi.encodeWithSignature(
+                    "successFunction()"
+                )
+            );
+
+        lastSuccess = success;
+        lastData = data;
+
+        // Check return value
+        require(success, "External function call failed");
+    }
+
+    /*
+    =====================================================
+    SAFE FAILING CALL
+    =====================================================
+    */
+
+    function safeFailingCall(address target) external {
+
+        executionCounter++;
+
+        (bool success, bytes memory data) =
+            target.call(
+                abi.encodeWithSignature(
+                    "failFunction()"
+                )
+            );
+
+        lastSuccess = success;
+        lastData = data;
+
+        // Revert if call failed
+        require(success, "External call reverted");
+    }
+
+    /*
+    =====================================================
+    SAFE ETH TRANSFER
+    =====================================================
+    */
+
+    function safeETHTransfer(
+        address payable target
+    )
+        external
+        payable
+    {
+        (bool success, bytes memory data) =
+            target.call{value: msg.value}("");
+
+        lastSuccess = success;
+        lastData = data;
+
+        // Prevent silent failure
+        require(success, "ETH transfer failed");
+    }
+}
