@@ -169,6 +169,131 @@ KEY TAKEAWAYS
 
 =========================================================
 */
+/*
+Audit Report
+
+Title: Forced Ether via selfdestruct Causes Accounting Mismatch
+
+Severity: Medium because an attacker can force Ether into the contract using
+selfdestruct(), causing the contract's actual ETH balance to differ from its
+internal accounting. While this does not directly allow theft of funds, it
+can break business logic, invariants, and balance-dependent operations.
+
+Location:
+Contract: VictimContractVul
+Function: withdrawAll()
+
+Vulnerability Description:
+
+The contract maintains an internal accounting variable (balanceTracker) that
+tracks deposits made through the update() function.
+
+The withdrawAll() function assumes that:
+
+```
+balanceTracker == address(this).balance
+```
+
+This assumption is unsafe because Ether can be forced into the contract
+without executing update(), receive(), or fallback() by using
+selfdestruct() from another contract.
+
+As a result, the contract's actual Ether balance can become larger than
+balanceTracker, causing the equality check to fail and preventing
+withdrawAll() from executing.
+
+Impact:
+
+An attacker can:
+
+* force Ether into the contract using selfdestruct()
+* break the accounting invariant
+* cause withdrawAll() to revert permanently
+* create denial-of-service conditions for balance-dependent logic
+* disrupt protocols relying on address(this).balance for accounting
+
+Although no funds are directly stolen, incorrect accounting may prevent
+normal contract operation and affect protocol functionality.
+
+Proof of Concept:
+
+1. Deploy VictimContractVul.
+
+2. Deposit 1 ETH by calling:
+
+   update{value: 1 ether}()
+
+State:
+
+```
+balanceTracker = 1 ETH
+address(this).balance = 1 ETH
+```
+
+3. Deploy ForceEtherSenderVul.
+
+4. Call:
+
+   forceSend{value: 5 ether}(victimAddress)
+
+5. ForceEtherSenderVul executes selfdestruct() and transfers 5 ETH to
+   VictimContractVul.
+
+State becomes:
+
+```
+balanceTracker = 1 ETH
+address(this).balance = 6 ETH
+```
+
+6. Call:
+
+withdrawAll()
+
+The following check fails:
+
+```
+require(
+    balanceTracker == address(this).balance,
+    "Accounting mismatch"
+);
+```
+
+The transaction reverts because the internal accounting no longer matches
+the contract's actual Ether balance.
+
+Root Cause:
+
+The contract assumes that address(this).balance only changes through the
+update() function.
+
+However, Ether can be transferred to any contract through selfdestruct(),
+mining rewards (historically), or other protocol mechanisms without executing
+the contract's logic.
+
+Therefore, address(this).balance must never be treated as a trusted accounting
+source.
+
+Recommendation:
+
+Do not rely on address(this).balance for internal accounting.
+
+Recommended mitigations include:
+
+* maintain independent accounting variables for user deposits
+* track balances using mappings and totalDeposits
+* avoid equality checks between internal accounting and
+  address(this).balance
+* design business logic to tolerate unexpected Ether transfers
+* treat address(this).balance only as the contract's actual Ether holdings,
+  not as the authoritative accounting value
+
+The patched contract correctly separates internal accounting
+(totalDeposits) from the contract's actual Ether balance, preventing forced
+Ether transfers from breaking contract logic.
+
+*/
+
 // Patched code
 contract VictimContract {
 
