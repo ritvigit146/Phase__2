@@ -81,186 +81,74 @@ CONTRACT C
 FINAL TARGET
 =========================================================
 */
+contract ContractCVul {
 
-contract ContractC {
-
-    /*
-        TRACK EXECUTION
-    */
     uint256 public counter;
 
-    /*
-    =====================================================
-    FINAL EXECUTION
-    =====================================================
-    */
-
-    function finalStep()
-        external
-    {
-
-        /*
-            Increment execution counter.
-        */
+    function finalStep() external {
         counter++;
     }
 
-    /*
-    =====================================================
-    FAILING FUNCTION
-    =====================================================
-    */
-
-    function failStep()
-        external
-        pure
-    {
-
+    function failStep() external pure {
         revert("Contract C failure");
     }
 }
 
-/*
-=========================================================
-CONTRACT B
-MIDDLE CONTRACT
-=========================================================
-*/
+contract ContractBVul {
 
-contract ContractB {
-
-    /*
-        STORE CONTRACT C
-    */
-    ContractC public contractC;
-
-    /*
-        TRACK EXECUTION
-    */
+    address public contractC;
     uint256 public middleCounter;
 
-    /*
-        CONSTRUCTOR
-    */
-    constructor(address _contractC)
-    {
-
-        contractC = ContractC(_contractC);
+    constructor(address _contractC) {
+        contractC = _contractC;
     }
 
-    /*
-    =====================================================
-    CALL CONTRACT C
-    =====================================================
-    */
+    function callFinalStep() external {
 
-    function callFinalStep()
-        external
-    {
-
-        /*
-            Local state update.
-        */
         middleCounter++;
 
-        /*
-            EXTERNAL CALL:
-            Contract B -> Contract C
-        */
-        contractC.finalStep();
+        // Vulnerability: Ignore return value
+        contractC.call(
+            abi.encodeWithSignature("finalStep()")
+        );
     }
 
-    /*
-    =====================================================
-    CALL FAILING FUNCTION
-    =====================================================
-    */
+    function callFailingStep() external {
 
-    function callFailingStep()
-        external
-    {
-
-        /*
-            State update.
-        */
         middleCounter++;
 
-        /*
-            External call that reverts.
-        */
-        contractC.failStep();
+        // Vulnerability: Failure ignored
+        contractC.call(
+            abi.encodeWithSignature("failStep()")
+        );
     }
 }
 
-/*
-=========================================================
-CONTRACT A
-ENTRY CONTRACT
-=========================================================
-*/
+contract ContractAVul {
 
-contract ContractA {
+    ContractBVul public contractB;
 
-    /*
-        STORE CONTRACT B
-    */
-    ContractB public contractB;
-
-    /*
-        TRACK EXECUTION
-    */
     uint256 public entryCounter;
 
-    /*
-        CONSTRUCTOR
-    */
-    constructor(address _contractB)
-    {
-
-        contractB = ContractB(_contractB);
+    constructor(address _contractB) {
+        contractB = ContractBVul(_contractB);
     }
 
-    /*
-    =====================================================
-    START EXECUTION CHAIN
-    =====================================================
-    */
+    function startChain() external {
 
-    function startChain()
-        external
-    {
-
-        /*
-            Local state update.
-        */
         entryCounter++;
 
-        /*
-            EXTERNAL CALL:
-            Contract A -> Contract B
-        */
         contractB.callFinalStep();
     }
 
-    /*
-    =====================================================
-    START FAILING CHAIN
-    =====================================================
-    */
+    function startFailingChain() external {
 
-    function startFailingChain()
-        external
-    {
-
-        /*
-            State update.
-        */
         entryCounter++;
 
-        /*
-            Nested call chain eventually fails.
-        */
+        // ContractB never reports failure
         contractB.callFailingStep();
+
+        // Transaction still succeeds
     }
 }
 
@@ -687,143 +575,192 @@ IMPORTANT CONCEPTS LEARNED
 /*
 Audit Report
 
-Title: No Security Vulnerability Identified in Chained External Calls
+Title: Unchecked Low-Level External Calls in Chained Execution
 
-Severity: Informational
+Severity: Medium because low-level call() does not automatically revert on
+failure. Ignoring its return value allows execution to continue even when a
+critical external call fails, leading to inconsistent contract state and
+unexpected behavior.
 
 Location:
-Contract: ContractA
-Function: startChain()
-
-Contract: ContractA
-Function: startFailingChain()
-
-Contract: ContractB
-Function: callFinalStep()
-
-Contract: ContractB
-Function: callFailingStep()
-
-Contract: ContractC
-Function: finalStep()
-
-Contract: ContractC
-Function: failStep()
+Contract: ContractBVul
+Functions:
+- callFinalStep()
+- callFailingStep()
 
 Vulnerability Description:
 
-The contracts demonstrate chained external calls between multiple
-contracts:
+The ContractBVul contract performs low-level external calls to ContractC
+using address.call(), but it does not verify the returned success value.
 
-    ContractA
-        ->
-    ContractB
-        ->
-    ContractC
+Since low-level call() returns a boolean indicating whether the external
+call succeeded, failing to check this value means that execution continues
+even if the called contract reverts.
 
-The implementation correctly relies on Solidity's built-in transaction
-atomicity. If any contract in the execution chain reverts, the revert
-automatically propagates back through every caller, causing the entire
-transaction to revert and restoring all previously modified state.
-
-No inconsistent state, unchecked external call, reentrancy issue, or
-access-control vulnerability is present in the current implementation.
+As a result, the transaction may appear successful while the intended
+operation in ContractC never executes. This creates inconsistent state
+between the contracts participating in the execution chain.
 
 Impact:
 
-No direct security impact.
+An attacker or an unexpected failure in ContractC could cause:
 
-When the final contract reverts:
+- silent execution failures
+- inconsistent state across multiple contracts
+- incorrect execution tracking
+- business logic continuing after failed operations
+- unexpected protocol behavior
 
-- entryCounter is restored.
-- middleCounter is restored.
-- counter remains unchanged.
-- Entire transaction reverts safely.
-
-The blockchain state always remains consistent.
+In complex DeFi protocols, ignoring failed external calls can result in
+incorrect accounting, incomplete operations, or broken execution flows.
 
 Proof of Concept:
 
-1. Deploy ContractC.
+1. Deploy ContractCVul.
 
-2. Deploy ContractB using the address of ContractC.
+2. Deploy ContractBVul using the address of ContractCVul.
 
-3. Deploy ContractA using the address of ContractB.
+3. Deploy ContractAVul using the address of ContractBVul.
 
 4. Call:
 
-    startFailingChain()
+   startFailingChain()
 
-Execution flow:
+5. Execution flow:
 
-    ContractA
-        entryCounter++
+   ContractA
+      →
+   ContractB
+      →
+   ContractC.failStep()
 
-            ↓
+6. ContractC reverts with:
 
-    ContractB
-        middleCounter++
+   "Contract C failure"
 
-            ↓
+7. ContractBVul ignores the returned success value from call().
 
-    ContractC
-        failStep()
+8. The transaction completes successfully instead of reverting.
 
-            ↓
+9. Final state becomes:
 
-        revert("Contract C failure")
+   entryCounter = 1
+   middleCounter = 1
+   ContractC.counter = 0
 
-5. The revert propagates:
-
-    ContractC
-        ->
-    ContractB
-        ->
-    ContractA
-
-6. Final state:
-
-    entryCounter = unchanged
-
-    middleCounter = unchanged
-
-    counter = unchanged
-
-7. Entire transaction is reverted.
+This demonstrates that the execution chain is left in an inconsistent state.
 
 Root Cause:
 
-No vulnerability exists.
+The contract uses low-level address.call() without checking the returned
+success boolean.
 
-The observed behavior is the intended behavior of Solidity's atomic
-transaction model, where any revert occurring in a nested external call
-causes all previous state modifications within the same transaction to
-be rolled back automatically.
+Unlike normal Solidity interface calls, low-level call() never reverts
+automatically. It returns:
+
+(bool success, bytes memory returndata)
+
+Developers must explicitly validate the success value to ensure the external
+operation completed successfully.
 
 Recommendation:
 
-No security patch is required.
+Always validate the return value of low-level calls.
 
-For production contracts, auditors may additionally recommend:
+Recommended mitigations include:
 
-- Validate constructor addresses (non-zero and deployed contracts).
-- Apply access control if only authorized users should initiate the
-  execution chain.
-- Use try/catch if partial failure handling is required.
-- Review external calls for reentrancy if future versions introduce
-  ETH transfers or callback functionality.
+- capture the returned success boolean
+- revert if success is false
+- propagate failures to the caller
+- use interface-based external calls whenever possible
+- use low-level call() only when necessary and always check its result
 
-Conclusion:
+Example:
 
-No security vulnerabilities were identified during the review.
+(bool success, ) = contractC.call(
+    abi.encodeWithSignature("finalStep()")
+);
 
-The contracts correctly demonstrate:
+require(success, "Contract C call failed");
 
-- Chained external execution
-- msg.sender transitions
-- Revert propagation
-- Atomic transaction rollback
-- Consistent state management
+This ensures that any failure in the external contract causes the entire
+transaction to revert, preserving atomicity and maintaining consistent
+state across all contracts in the execution chain.
 
-Overall Risk Rating: Informational
 */
+
+// Patched code
+contract ContractCPatched {
+
+    uint256 public counter;
+
+    function finalStep() external {
+        counter++;
+    }
+
+    function failStep() external pure {
+        revert("Contract C failure");
+    }
+}
+
+contract ContractBPatched {
+
+    address public contractC;
+    uint256 public middleCounter;
+
+    constructor(address _contractC) {
+        contractC = _contractC;
+    }
+
+    function callFinalStep() external {
+
+        middleCounter++;
+
+        (bool success, ) =
+            contractC.call(
+                abi.encodeWithSignature("finalStep()")
+            );
+
+        require(success, "Contract C call failed");
+    }
+
+    function callFailingStep() external {
+
+        middleCounter++;
+
+        (bool success, ) =
+            contractC.call(
+                abi.encodeWithSignature("failStep()")
+            );
+
+        require(success, "Contract C reverted");
+    }
+}
+
+contract ContractAPatched {
+
+    ContractBPatched public contractB;
+
+    uint256 public entryCounter;
+
+    constructor(address _contractB) {
+        contractB = ContractBPatched(_contractB);
+    }
+
+    function startChain() external {
+
+        entryCounter++;
+
+        contractB.callFinalStep();
+    }
+
+    function startFailingChain() external {
+
+        entryCounter++;
+
+        contractB.callFailingStep();
+
+        // If ContractC fails,
+        // entire transaction reverts.
+    }
+}
