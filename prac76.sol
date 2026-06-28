@@ -13,26 +13,54 @@ This contract is INTENTIONALLY VULNERABLE.
 DO NOT use in production.
 =========================================================
 */
-contract VulnerableBank {
+
+contract VulnerableBankVul {
 
     mapping(address => uint256) public balance;
+
+    /*
+    =====================================================
+    DEPOSIT ETH
+    =====================================================
+    */
 
     function deposit() external payable {
         balance[msg.sender] += msg.value;
     }
 
-    // VULNERABLE TO REENTRANCY
+    /*
+    =====================================================
+    WITHDRAW ETH (VULNERABLE)
+    =====================================================
+    */
+
     function withdraw(uint256 amount) external {
 
+        /*
+        STEP 1:
+        Check balance
+        */
         require(balance[msg.sender] >= amount, "Not enough balance");
 
-        // External call before state update
+        /*
+        STEP 2:
+        EXTERNAL CALL FIRST(DANGER)
+        */
         (bool success, ) = msg.sender.call{value: amount}("");
         require(success, "Transfer failed");
 
-        // State updated too late
+        /*
+        STEP 3:
+        STATE UPDATE AFTER CALL(ROOT ISSUE)
+        */
         balance[msg.sender] -= amount;
     }
+
+    /*
+    =====================================================
+    VIEW BALANCE
+    =====================================================
+    */
 
     function getBalance(address user)
         external
@@ -42,110 +70,84 @@ contract VulnerableBank {
         return balance[user];
     }
 }
+
+
 /*
 Audit Report
 
 Title: Reentrancy Vulnerability in withdraw()
 
-Severity: High because an attacker can repeatedly withdraw funds before their balance is updated, potentially draining all 
-Ether held by the contract.
+Severity: Critical
+
+Reason:
+The contract performs an external call before updating internal state,
+allowing a malicious contract to re-enter withdraw() multiple times and
+drain funds.
 
 Location:
-Contract: VulnerableBank
+
+Contract: VulnerableBankVul
 Function: withdraw(uint256 amount)
 
 Vulnerability Description:
-The withdraw() function performs an external call to msg.sender before updating
-the user's balance.
 
-Since control is transferred to an untrusted external address before the contract's
-internal state is updated, a malicious contract can re-enter withdraw() through
-its receive() or fallback() function.
+The withdraw() function sends ETH to msg.sender using a low-level call
+before reducing the user's recorded balance.
 
-Because the balance is not reduced until after the external call returns,
-each reentrant call passes the balance check and allows multiple withdrawals
-using the same deposited balance.
+Because control is transferred to an external address before the balance
+is updated, a malicious contract can execute a fallback() or receive()
+function and call withdraw() again.
+
+Since the balance has not yet been reduced, the balance check passes
+repeatedly, allowing multiple withdrawals within the same transaction.
 
 Impact:
-An attacker can recursively call withdraw() and drain all Ether stored in the
-contract, including funds belonging to other users.
 
-This can lead to:
-- complete loss of contract funds
-- theft of user deposits
+An attacker can drain ETH from the contract beyond their legitimate balance.
+
+Potential consequences include:
+
+- theft of all ETH stored in the contract
+- loss of user funds
 - protocol insolvency
-- denial of service for legitimate users
+- complete contract compromise
 
 Proof of Concept:
+        1. Deploy VulnerableBankVul.
+        2. User deposits ETH into the bank.
+        3. Attacker deposits a small amount of ETH.
+        4. Attacker calls withdraw().
+        5. During the external call:
 
-1. Deploy VulnerableBank.
-2. Deposit 1 ETH from a malicious attacker contract.
-3. Call withdraw(1 ether).
-4. The contract sends 1 ETH to the attacker.
-5. The attacker's receive() function immediately calls withdraw(1 ether) again.
-6. Since the balance has not yet been decreased, the balance check succeeds.
-7. The process repeats until the contract's Ether balance is drained.
-8. Only after the recursive calls finish is the attacker's balance reduced once.
+        msg.sender.call{value: amount}("");
+
+        6. Attacker's fallback/receive function executes.
+        7. Fallback calls withdraw() again.
+        8. Balance check still succeeds because balance has not been reduced.
+        9. Process repeats until contract funds are drained.
 
 Root Cause:
-The function violates the Checks-Effects-Interactions (CEI) pattern by making
-an external call before updating internal state.
+The contract violates the Checks-Effects-Interactions (CEI) pattern.
 
-Specifically:
-
+Vulnerable code:
+require(balance[msg.sender] >= amount, "Not enough balance");
 (bool success, ) = msg.sender.call{value: amount}("");
 require(success, "Transfer failed");
-
 balance[msg.sender] -= amount;
-
-The balance update occurs after the external interaction, allowing reentrant
-execution before the state is changed.
+State update occurs after the external interaction.
 
 Recommendation:
-Follow the Checks-Effects-Interactions (CEI) pattern by updating the user's
-balance before making the external call.
+
+Follow the Checks-Effects-Interactions pattern:
+1. Check requirements
+2. Update state
+3. Perform external interaction
+
+Additionally consider using a reentrancy guard.
 
 Example:
 
-require(balance[msg.sender] >= amount, "Not enough balance");
-
 balance[msg.sender] -= amount;
-
 (bool success, ) = msg.sender.call{value: amount}("");
 require(success, "Transfer failed");
-
-Additionally, use OpenZeppelin's ReentrancyGuard and apply the nonReentrant
-modifier to the withdraw() function for defense in depth.
-
 */
-
-// Patched code
-contract PatchedBank {
-
-    mapping(address => uint256) public balance;
-
-    function deposit() external payable {
-        balance[msg.sender] += msg.value;
-    }
-
-    // SAFE AGAINST REENTRANCY
-    function withdraw(uint256 amount) external {
-
-        require(balance[msg.sender] >= amount, "Not enough balance");
-
-        // Update state first
-        balance[msg.sender] -= amount;
-
-        // External interaction after state update
-        (bool success, ) = msg.sender.call{value: amount}("");
-        require(success, "Transfer failed");
-    }
-
-    function getBalance(address user)
-        external
-        view
-        returns (uint256)
-    {
-        return balance[user];
-    }
-}
